@@ -43,12 +43,15 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
     [t("검색하고 살펴보기", "Search and inspect"), t("검색창에 신호나 부품 이름을 입력하세요. 휠로 확대·축소하고 드래그로 이동합니다. + / −, 0, 방향키도 사용할 수 있습니다.", "Search a signal or component name. Use the wheel to zoom and drag to pan. Keyboard shortcuts: + / − to zoom, 0 to fit, and arrow keys to pan.")],
     [t("다른 도면으로 교체하기", "Replace your drawing"), t("다른 PDF를 현재 뷰어에 끌어다 놓거나 ‘다른 PDF 열기’를 누르세요. 같은 작업 화면에서 새 도면이 열립니다. 여러 장은 상단 페이지 번호로 이동합니다.", "Drop another PDF onto the current viewer or choose Open another PDF. It replaces the drawing in the same workspace. Use the page numbers to navigate multi-page files.")],
   ];
+  const languageSwitch = <div className="language-switch" role="group" aria-label={t("언어 선택", "Language")}><button type="button" aria-pressed={language === "ko"} onClick={() => onLanguage("ko")}>한국어</button><button type="button" aria-pressed={language === "en"} onClick={() => onLanguage("en")}>EN</button></div>;
+  // the workspace has a single header row: the brand and language switch move into the viewer toolbar
+  const workspaceBrand = <a className="brand" href="#home" aria-label={`Schematic Viewer · ${t("홈으로")}`}><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>;
   return <div className={viewer ? "site-shell workspace-shell" : "site-shell"}>
-    <header className="site-header"><a className="brand" href="#home"><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>
+    <header className="site-header" hidden={viewer}><a className="brand" href="#home"><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>
       <nav aria-label={t("사이트 메뉴", "Site navigation")}><a href="#about">{t("소개", "About")}</a><a href="#guide">{t("사용법", "Guide")}</a><a href="#privacy">{t("개인정보처리방침", "Privacy")}</a></nav>
-      <div className="header-actions"><div className="language-switch" role="group" aria-label={t("언어 선택", "Language")}><button type="button" aria-pressed={language === "ko"} onClick={() => onLanguage("ko")}>한국어</button><button type="button" aria-pressed={language === "en"} onClick={() => onLanguage("en")}>EN</button></div><a className="header-start" href="#viewer">{t("시작하기", "Get started")}<ArrowRight size={15} aria-hidden="true" /></a></div>
+      <div className="header-actions">{languageSwitch}<a className="header-start" href="#viewer">{t("시작하기", "Get started")}<ArrowRight size={15} aria-hidden="true" /></a></div>
     </header>
-    <div className="workspace" hidden={!viewer}><App active={viewer} /></div>
+    <div className="workspace" hidden={!viewer}><App active={viewer} headerStart={workspaceBrand} headerEnd={languageSwitch} /></div>
     {!viewer && <><main id="home">
       <section className="landing-hero" aria-labelledby="welcome"><div className="hero-layout"><div className="hero-copy">
         <p className="eyebrow">SCHEMATIC VIEWER / BROWSER WORKSPACE</p><h1 id="welcome">{t("복잡한 회로도,", "Complex schematics.")}<br /><span>{t("명확하게 이어지는 연결.", "Clear connections.")}</span></h1>

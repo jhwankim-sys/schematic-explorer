@@ -145,8 +145,48 @@ export function segPath(page: SchPage, netIds: number[]): string {
   return parts.join("");
 }
 
+/** how well a name answers a search: 0 exact, 1 starts with it, 2 contains it, -1 no match (q is upper-case) */
+export function matchRank(name: string, q: string): number {
+  const s = name.toUpperCase();
+  return s === q ? 0 : s.startsWith(q) ? 1 : s.includes(q) ? 2 : -1;
+}
+
+/** keeps the entries that match, best matches first (the original order is kept within a rank) */
+export function rankFilter<T>(items: T[], q: string, names: (item: T) => string[]): T[] {
+  const ranked: { item: T; rank: number }[] = [];
+  for (const item of items) {
+    let best = -1;
+    for (const n of names(item)) {
+      const r = matchRank(n, q);
+      if (r >= 0 && (best < 0 || r < best)) best = r;
+    }
+    if (best >= 0) ranked.push({ item, rank: best });
+  }
+  return ranked.sort((a, b) => a.rank - b.rank).map((x) => x.item);
+}
+
+/** texts on the page containing the query: exact matches first, then prefixes, then the rest */
 export function matchTexts(page: SchPage, query: string): SchText[] {
   const q = query.trim().toUpperCase();
   if (!q) return [];
-  return page.texts.filter((t) => t.str.toUpperCase().includes(q));
+  return rankFilter(page.texts, q, (t) => [t.str]);
+}
+
+export function countExact(texts: SchText[], query: string): number {
+  const q = query.trim().toUpperCase();
+  return texts.reduce((a, t) => a + Number(t.str.toUpperCase() === q), 0);
+}
+
+/**
+ * CSV text for a spreadsheet: quoted where needed, CRLF rows, BOM so Excel reads UTF-8.
+ * Names such as "+5V" or "-12V" would be read as formulas (and shown as #NAME?), so those
+ * cells are written as ="+5V", which spreadsheets display as the plain text.
+ */
+export function toCsv(rows: (string | number)[][]): string {
+  const cell = (v: string | number) => {
+    const s = String(v);
+    if (/^[=+\-@]/.test(s)) return `"=""${s.replace(/"/g, '""""')}"""`;
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return "\uFEFF" + rows.map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
 }
