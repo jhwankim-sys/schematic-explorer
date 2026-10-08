@@ -1,3 +1,4 @@
+import { useT } from "../i18n.tsx";
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import { Minus, Plus, Scan } from "lucide-react";
 import { Button } from "./ui.tsx";
@@ -73,6 +74,7 @@ const BaseDrawing = memo(function BaseDrawing({ page }: { page: SchPage }) {
 });
 
 export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, activeMatch, onPick, ref }: Props) {
+  const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** view the bitmap on the canvas was painted for (it is stretched until the next repaint) */
@@ -228,8 +230,8 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
         id="drawing"
         tabIndex={0}
         role="application"
-        aria-roledescription="회로도"
-        aria-label="회로도 도면. 클릭하면 같은 노드가 강조됩니다. 휠 또는 +, - 키로 확대·축소, 화살표 키로 이동, 0 키로 전체 보기."
+        aria-roledescription={t("회로도", "Schematic")}
+        aria-label={t("회로도 도면. 클릭하면 같은 노드가 강조됩니다. 휠 또는 +, - 키로 확대·축소, 화살표 키로 이동, 0 키로 전체 보기.", "Schematic drawing. Click a wire to highlight its net. Use the wheel or + and - to zoom, arrow keys to pan, and 0 to fit the drawing.")}
         className="h-full w-full cursor-crosshair touch-none select-none bg-muted text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         onKeyDown={onKeyDown}
         onPointerDown={(e) => {
@@ -338,13 +340,13 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
       </div>
 
       <div className="absolute bottom-4 right-4 flex flex-col overflow-hidden rounded-md border border-border bg-popover shadow-sm">
-        <Button variant="ghost" size="icon" aria-label="확대" onClick={() => zoomAt(1 / 1.4)}>
+        <Button variant="ghost" size="icon" aria-label={t("확대")} onClick={() => zoomAt(1 / 1.4)}>
           <Plus aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon" aria-label="축소" onClick={() => zoomAt(1.4)}>
+        <Button variant="ghost" size="icon" aria-label={t("축소")} onClick={() => zoomAt(1.4)}>
           <Minus aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon" aria-label="전체 보기" onClick={() => fit(null, 0.02)}>
+        <Button variant="ghost" size="icon" aria-label={t("전체 보기")} onClick={() => fit(null, 0.02)}>
           <Scan aria-hidden="true" />
         </Button>
       </div>
