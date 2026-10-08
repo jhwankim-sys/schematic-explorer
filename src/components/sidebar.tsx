@@ -1,3 +1,4 @@
+import { useT } from "../i18n.tsx";
 import { useMemo } from "react";
 import { Cpu, Search, Waypoints, X } from "lucide-react";
 import { Button, cn, Input, TabStrip } from "./ui.tsx";
@@ -34,6 +35,7 @@ export function SchematicSidebar({
   onPickNet,
   onPickComp,
 }: Props) {
+  const t = useT();
   const q = query.trim().toUpperCase();
   const fNets = useMemo(() => (q ? nets.filter((n) => n.name.toUpperCase().includes(q)) : nets), [nets, q]);
   const fComps = useMemo(
@@ -45,7 +47,7 @@ export function SchematicSidebar({
   const signal = fNets.filter((n) => !n.power);
 
   return (
-    <aside aria-label="노드와 부품 목록" className="flex min-h-0 w-80 shrink-0 flex-col border-r border-border bg-card">
+    <aside aria-label={t("노드와 부품 목록")} className="flex min-h-0 w-56 shrink-0 sm:w-72 flex-col border-r border-border bg-card">
       <form
         role="search"
         className="border-b border-border p-3"
@@ -55,7 +57,7 @@ export function SchematicSidebar({
         }}
       >
         <label htmlFor="sch-search" className="sr-only">
-          노드, 핀, 부품 이름 검색
+          {t("노드, 핀, 부품 이름 검색")}
         </label>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -73,7 +75,7 @@ export function SchematicSidebar({
               variant="ghost"
               size="icon"
               className="absolute right-0.5 top-1/2 size-7 -translate-y-1/2"
-              aria-label="검색어 지우기"
+              aria-label={t("검색어 지우기")}
               onClick={() => onQuery("")}
             >
               <X aria-hidden="true" />
@@ -92,7 +94,7 @@ export function SchematicSidebar({
             label: (
               <>
                 <Waypoints aria-hidden="true" />
-                노드 <span className="tabular-nums text-muted-foreground">{fNets.length}</span>
+                {t("노드")}<span className="tabular-nums text-muted-foreground">{fNets.length}</span>
               </>
             ),
           },
@@ -101,7 +103,7 @@ export function SchematicSidebar({
             label: (
               <>
                 <Cpu aria-hidden="true" />
-                부품 <span className="tabular-nums text-muted-foreground">{fComps.length}</span>
+                {t("부품")}<span className="tabular-nums text-muted-foreground">{fComps.length}</span>
               </>
             ),
           },
@@ -110,12 +112,12 @@ export function SchematicSidebar({
 
       {tab === "nets" && (
         <div role="tabpanel" id="side-panel-nets" aria-labelledby="side-tab-nets" className="min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-2">
-          {fNets.length === 0 && <p className="px-2 py-6 text-sm text-muted-foreground">일치하는 노드가 없습니다.</p>}
-          {power.length > 0 && <NetGroup title="전원" items={power} selected={selectedNet} onPick={onPickNet} />}
-          {signal.length > 0 && <NetGroup title="신호" items={signal} selected={selectedNet} onPick={onPickNet} />}
+          {fNets.length === 0 && <p className="px-2 py-6 text-sm text-muted-foreground">{t("일치하는 노드가 없습니다.")}</p>}
+          {power.length > 0 && <NetGroup title={t("전원")} items={power} selected={selectedNet} onPick={onPickNet} />}
+          {signal.length > 0 && <NetGroup title={t("신호")} items={signal} selected={selectedNet} onPick={onPickNet} />}
           {!q && unnamedCount > 0 && (
             <p className="px-2 pt-4 text-xs text-muted-foreground">
-              라벨이 없는 노드 {unnamedCount.toLocaleString()}개는 도면에서 배선을 클릭해 확인할 수 있습니다.
+              {t(`라벨이 없는 노드 ${unnamedCount.toLocaleString()}개는 도면에서 배선을 클릭해 확인할 수 있습니다.`, `Click wires in the drawing to inspect ${unnamedCount.toLocaleString()} unlabeled nets.`)}
             </p>
           )}
         </div>
@@ -123,7 +125,7 @@ export function SchematicSidebar({
 
       {tab === "parts" && (
         <div role="tabpanel" id="side-panel-parts" aria-labelledby="side-tab-parts" className="min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-2">
-          {fComps.length === 0 && <p className="px-2 py-6 text-sm text-muted-foreground">일치하는 부품이 없습니다.</p>}
+          {fComps.length === 0 && <p className="px-2 py-6 text-sm text-muted-foreground">{t("일치하는 부품이 없습니다.")}</p>}
           <ul className="flex flex-col">
             {fComps.map((c) => {
               const active = selectedComp === c.ref;
@@ -162,6 +164,7 @@ function NetGroup({
   selected: string | null;
   onPick: (e: NetEntry) => void;
 }) {
+  const t = useT();
   return (
     <section className="mb-3">
       <h3 className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
@@ -185,7 +188,7 @@ function NetGroup({
                 />
                 <span className="min-w-0 flex-1 truncate font-mono">{n.name}</span>
                 {n.labelCount > 1 && (
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground" aria-label={`라벨 ${n.labelCount}곳`}>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground" aria-label={t(`라벨 ${n.labelCount}곳`, `${n.labelCount} labels`)}>
                     ×{n.labelCount}
                   </span>
                 )}
