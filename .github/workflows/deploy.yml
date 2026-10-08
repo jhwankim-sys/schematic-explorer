@@ -1,8 +1,11 @@
+# main 브랜치에 push하면 빌드해서 GitHub Pages로 배포합니다.
+# 저장소 Settings → Pages → Source를 "GitHub Actions"로 한 번 설정해야 합니다.
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -12,7 +15,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -22,13 +25,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+          cache: npm
+      - run: npm ci
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
+    # PR에서는 빌드만 확인하고, main에 들어온 뒤에만 배포합니다.
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:

@@ -32,6 +32,7 @@ npm run dev        # 개발 서버 → 브라우저에서 http://localhost:5173
 
 | 방식 | 방법 |
 |---|---|
+| GitHub Pages (기본) | `main`에 push하면 `.github/workflows/deploy.yml`이 자동 빌드·배포. 최초 1회 저장소 Settings → Pages → Source를 **GitHub Actions**로 지정 |
 | 일반 웹서버 / VPS (nginx, Apache) | `dist/` 안의 파일을 웹 루트나 하위 폴더에 복사 |
 | Docker | `docker build -t schematic-explorer .` → `docker run -p 8080:80 schematic-explorer` (포함된 `Dockerfile`, `nginx.conf` 사용) |
 | 정적 호스팅 (Cloudflare Pages, Netlify, Vercel, GitHub Pages, Azure Static Web Apps 등) | 빌드 명령 `npm run build`, 결과 폴더 `dist` 로 지정 |
