@@ -15,8 +15,21 @@ interface View {
   k: number;
 }
 
+/** the bits of a pdf.js document the viewer needs to paint the real drawing */
+export interface PdfRenderSource {
+  getPage(n: number): Promise<{
+    getViewport(o: { scale: number; offsetX?: number; offsetY?: number }): unknown;
+    render(o: { canvasContext: CanvasRenderingContext2D; viewport: unknown; background?: string }): {
+      promise: Promise<void>;
+      cancel(): void;
+    };
+  }>;
+}
+
 interface Props {
   page: SchPage;
+  /** pdf.js document: when present the original PDF is painted underneath */
+  pdf?: PdfRenderSource | null;
   /** nets drawn in red */
   netIds: number[];
   /** text boxes outlined in red (selected item's labels / reference) */
@@ -28,10 +41,10 @@ interface Props {
   ref?: Ref<ViewerHandle>;
 }
 
+/** fallback when the PDF itself can't be painted: outlines only (filled areas would black out the sheet) */
 const BaseDrawing = memo(function BaseDrawing({ page }: { page: SchPage }) {
   return (
     <g>
-      <path d={page.fillPath} fill="currentColor" stroke="none" />
       <path
         d={page.strokePath}
         fill="none"
@@ -59,8 +72,12 @@ const BaseDrawing = memo(function BaseDrawing({ page }: { page: SchPage }) {
   );
 });
 
-export function SchematicViewer({ page, netIds, focusTexts, matches, activeMatch, onPick, ref }: Props) {
+export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, activeMatch, onPick, ref }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** view the bitmap on the canvas was painted for (it is stretched until the next repaint) */
+  const [painted, setPainted] = useState<{ view: View; page: number; w: number; h: number } | null>(null);
+  const [paintFailed, setPaintFailed] = useState(false);
   const [size, setSize] = useState({ w: 800, h: 600 });
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const drag = useRef<{ id: number; sx: number; sy: number; vx: number; vy: number; moved: boolean } | null>(null);
@@ -134,6 +151,53 @@ export function SchematicViewer({ page, netIds, focusTexts, matches, activeMatch
     return () => el.removeEventListener("wheel", onWheel);
   }, [zoomAt]);
 
+  // paint the real PDF for the visible area; debounced so panning / zooming stays smooth
+  useEffect(() => {
+    if (!pdf || paintFailed) return;
+    let cancelled = false;
+    let task: { cancel(): void } | null = null;
+    const fresh = !painted || painted.page !== page.index;
+    const timer = setTimeout(
+      async () => {
+        try {
+          const pg = await pdf.getPage(page.index + 1);
+          if (cancelled) return;
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const scale = dpr / view.k;
+          const viewport = pg.getViewport({ scale, offsetX: -view.x * scale, offsetY: -view.y * scale });
+          const off = document.createElement("canvas");
+          off.width = Math.max(1, Math.ceil(size.w * dpr));
+          off.height = Math.max(1, Math.ceil(size.h * dpr));
+          const ctx = off.getContext("2d");
+          if (!ctx) throw new Error("canvas");
+          const t = pg.render({ canvasContext: ctx, viewport, background: "#ffffff" });
+          task = t;
+          await t.promise;
+          const c = canvasRef.current;
+          if (cancelled || !c) return;
+          c.width = off.width;
+          c.height = off.height;
+          c.getContext("2d")?.drawImage(off, 0, 0);
+          setPainted({ view, page: page.index, w: size.w, h: size.h });
+        } catch (e) {
+          if (!cancelled && !/cancel/i.test(String((e as Error)?.name ?? e))) setPaintFailed(true);
+        }
+      },
+      fresh ? 0 : 140,
+    );
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      task?.cancel();
+    };
+    // painted is read only to decide the delay
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdf, page, view, size, paintFailed]);
+
+  const showPdf = !!pdf && !paintFailed;
+  const shown = painted && painted.page === page.index ? painted : null;
+  const bitmap = shown?.view ?? null;
+
   const netD = useMemo(() => segPath(page, netIds), [page, netIds]);
   const netDots = useMemo(() => {
     const set = new Set(netIds);
@@ -160,6 +224,7 @@ export function SchematicViewer({ page, netIds, focusTexts, matches, activeMatch
     <div className="relative h-full w-full overflow-hidden">
       <div
         ref={wrapRef}
+        style={{ position: "relative" }}
         id="drawing"
         tabIndex={0}
         role="application"
@@ -191,9 +256,30 @@ export function SchematicViewer({ page, netIds, focusTexts, matches, activeMatch
         }}
         onPointerCancel={() => (drag.current = null)}
       >
-        <svg width={size.w} height={size.h} viewBox={vb} className="block" aria-hidden="true">
-          <rect x={0} y={0} width={page.width} height={page.height} fill="var(--card)" stroke="var(--border)" />
-          <BaseDrawing page={page} />
+        {showPdf && (
+          <canvas
+            ref={canvasRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-0 top-0 origin-top-left"
+            style={{
+              width: shown?.w ?? size.w,
+              height: shown?.h ?? size.h,
+              visibility: bitmap ? "visible" : "hidden",
+              transform: bitmap
+                ? `translate(${(bitmap.x - view.x) / view.k}px, ${(bitmap.y - view.y) / view.k}px) scale(${bitmap.k / view.k})`
+                : undefined,
+            }}
+          />
+        )}
+        <svg width={size.w} height={size.h} viewBox={vb} className="relative block" aria-hidden="true">
+          {showPdf ? (
+            <rect x={0} y={0} width={page.width} height={page.height} fill="none" stroke="var(--border)" vectorEffect="non-scaling-stroke" />
+          ) : (
+            <>
+              <rect x={0} y={0} width={page.width} height={page.height} fill="var(--card)" stroke="var(--border)" />
+              <BaseDrawing page={page} />
+            </>
+          )}
 
           {/* search hits */}
           {matches.map((t, i) => (

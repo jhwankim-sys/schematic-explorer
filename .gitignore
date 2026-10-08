@@ -7,3 +7,8 @@ dist/
 samples/
 *.pdf
 *.analysis.json
+
+# 코퍼스: 목록(manifest.json)만 올리고 내려받은 파일·결과는 제외
+corpus/cache/
+corpus/files/
+corpus/out/
