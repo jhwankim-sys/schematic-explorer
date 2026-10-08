@@ -1,0 +1,36 @@
+# PR마다 공개 회로도 코퍼스로 분석 엔진을 채점해 Summary에 점수표를 남깁니다.
+# (samples/ 의 개인 PDF는 저장소에 없으므로 여기서는 건너뜁니다)
+name: 코퍼스 채점
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run corpus:fetch
+      - name: 채점
+        run: |
+          npm run --silent corpus:score | tee score.txt
+          npm run --silent corpus:score -- --mono | tee score-mono.txt
+          {
+            echo "## 코퍼스 채점 (높을수록 좋음)"
+            echo '```'
+            cat score.txt
+            echo '```'
+            echo "### 흑백 인쇄로 가정 (--mono)"
+            echo '```'
+            cat score-mono.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

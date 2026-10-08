@@ -1,0 +1,106 @@
+{
+  "about": "정답 비교용 회로도 목록. repo 항목은 npm run corpus:fetch 로 내려받고, local 항목은 samples/ 폴더에 직접 둡니다. source(CAD 원본)가 있으면 정답 넷을 뽑아 점수를 매깁니다. Altium Smart PDF는 PDF 안의 책갈피 넷리스트가 정답입니다.",
+  "entries": [
+    {
+      "id": "arduino-uno-r3",
+      "tool": "eagle",
+      "local": true,
+      "pdf": "samples/Arduino_Uno_Rev3-schematic.pdf",
+      "note": "Eagle 6, 글자를 선으로 그림"
+    },
+    {
+      "id": "stm32f4-discovery-mb997",
+      "tool": "altium",
+      "local": true,
+      "pdf": "samples/mb997-f407vgt6-b02_schematic.pdf",
+      "note": "Altium Smart PDF (책갈피 넷리스트)"
+    },
+    {
+      "id": "steval-ids001v5",
+      "tool": "framemaker",
+      "local": true,
+      "pdf": "samples/steval-ids001v5_schematic.pdf",
+      "note": "문서용으로 다시 그린 도면, 90° 회전"
+    },
+    {
+      "id": "olimex-esp32-gateway-i",
+      "tool": "kicad5",
+      "repo": "OLIMEX/ESP32-GATEWAY",
+      "commit": "d45c9bc8120534b130a4f8bb8fa6cd3dc78e4ea0",
+      "pdf": "HARDWARE/Hardware revision I/ESP32-GATEWAY_Rev_I.pdf",
+      "source": "HARDWARE/Hardware revision I/ESP32-GATEWAY_Rev_I.sch"
+    },
+    {
+      "id": "olimex-esp32-devkit-lipo-d",
+      "tool": "kicad5",
+      "repo": "OLIMEX/ESP32-DevKit-LiPo",
+      "commit": "1ebbbb5ceaa84b1d67631d8d542d7f6128c19fc1",
+      "pdf": "HARDWARE/ESP32-DevKit-LiPo-Rev.D/ESP32-DevKit-Lipo_Rev_D.pdf",
+      "source": "HARDWARE/ESP32-DevKit-LiPo-Rev.D/ESP32-DevKit-Lipo_Rev_D.sch"
+    },
+    {
+      "id": "olimex-rp2040-pico30-a",
+      "tool": "kicad5",
+      "repo": "OLIMEX/RP2040-PICO30",
+      "commit": "a6937dcaca37d4b517f87f02973337e7d8501641",
+      "pdf": "HARDWARE/RP2040-PICO30_Rev_A/RP2040-PICO30_Rev_A.pdf",
+      "source": "HARDWARE/RP2040-PICO30_Rev_A/RP2040-PICO30_Rev_A.sch"
+    },
+    {
+      "id": "olimex-esp32-evb-k2",
+      "tool": "kicad5",
+      "repo": "OLIMEX/ESP32-EVB",
+      "commit": "a3ec2f448109cb8f35ce7cb21a027bb7c837ab61",
+      "pdf": "HARDWARE/REV-K2/ESP32-EVB_Rev_K2.pdf",
+      "source": "HARDWARE/REV-K2/ESP32-EVB_Rev_K2.sch"
+    },
+    {
+      "id": "olimex-esp32-c3-devkit-lipo-b",
+      "tool": "kicad5",
+      "repo": "OLIMEX/ESP32-C3-DevKit-Lipo",
+      "commit": "5d93e79d46cf3b05782d9fe0f95a8a2e1ca6abbe",
+      "pdf": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_B/ESP32-C3-DevKit-Lipo_Rev_B.pdf",
+      "source": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_B/ESP32-C3-DevKit-Lipo_Rev_B.sch"
+    },
+    {
+      "id": "olimex-esp32-poe-m",
+      "tool": "kicad5",
+      "repo": "OLIMEX/ESP32-POE",
+      "commit": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "pdf": "HARDWARE/ESP32-PoE-hardware-revision-M/ESP32-PoE_Rev_M.pdf",
+      "source": "HARDWARE/ESP32-PoE-hardware-revision-M/ESP32-PoE_Rev_M.sch"
+    },
+    {
+      "id": "olimex-esp32-evb-l",
+      "tool": "kicad7",
+      "repo": "OLIMEX/ESP32-EVB",
+      "commit": "a3ec2f448109cb8f35ce7cb21a027bb7c837ab61",
+      "pdf": "HARDWARE/REV-L/ESP32-EVB_Rev_L.pdf",
+      "source": "HARDWARE/REV-L/ESP32-EVB_Rev_L.kicad_sch"
+    },
+    {
+      "id": "olimex-esp32-c3-devkit-lipo-d",
+      "tool": "kicad7",
+      "repo": "OLIMEX/ESP32-C3-DevKit-Lipo",
+      "commit": "5d93e79d46cf3b05782d9fe0f95a8a2e1ca6abbe",
+      "pdf": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_D/ESP32-C3-DevKit-Lipo_Rev_D.pdf",
+      "source": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_D/ESP32-C3-DevKit-Lipo_Rev_D.kicad_sch"
+    },
+    {
+      "id": "olimex-esp32-poe-m2",
+      "tool": "kicad7",
+      "repo": "OLIMEX/ESP32-POE",
+      "commit": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "pdf": "HARDWARE/ESP32-PoE-hardware-revision-M2/ESP32-PoE_Rev_M2.pdf",
+      "source": "HARDWARE/ESP32-PoE-hardware-revision-M2/ESP32-PoE_Rev_M2.kicad_sch"
+    },
+    {
+      "id": "adafruit-metro-thm-ldo-c",
+      "tool": "eagle",
+      "repo": "adafruit/Adafruit-Metro-328-PCB",
+      "commit": "1d635d70533c446c925ec77240370cfee4fba7ad",
+      "pdf": "Metro THM+LDO Rev C - CP2104.pdf",
+      "source": "Metro THM+LDO Rev C - CP2104.sch"
+    }
+  ]
+}

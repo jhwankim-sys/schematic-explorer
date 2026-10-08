@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, FileUp, Focus, X } from "lucide-react";
 import { Badge, Button, Spinner } from "./components/ui.tsx";
 import { SchematicSidebar, type SidebarTab } from "./components/sidebar.tsx";
-import { SchematicViewer, type ViewerHandle } from "./components/viewer.tsx";
+import { SchematicViewer, type PdfRenderSource, type ViewerHandle } from "./components/viewer.tsx";
 import { UploadHero } from "./components/upload-hero.tsx";
 import type { SchText } from "./lib/schematic/analyze.ts";
 import { loadSchematic, type Schematic } from "./lib/schematic/extract.ts";
@@ -255,6 +255,7 @@ export function App() {
             <SchematicViewer
               ref={viewer}
               page={page}
+              pdf={doc.pdf as PdfRenderSource}
               netIds={netIds}
               focusTexts={focusTexts}
               matches={matches}
