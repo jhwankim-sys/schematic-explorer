@@ -1,7 +1,7 @@
 import { useT } from "../i18n.tsx";
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import { Minus, Plus, Scan } from "lucide-react";
-import { Button } from "./ui.tsx";
+import { Button, Spinner } from "./ui.tsx";
 import type { SchPage, SchText } from "../lib/schematic/analyze.ts";
 import { segPath, type Box } from "../lib/schematic/model.ts";
 
@@ -31,9 +31,9 @@ interface Props {
   page: SchPage;
   /** pdf.js document: when present the original PDF is painted underneath */
   pdf?: PdfRenderSource | null;
-  /** nets drawn in red */
+  /** nets drawn in the highlight colour (the rest of the sheet is dimmed meanwhile) */
   netIds: number[];
-  /** text boxes outlined in red (selected item's labels / reference) */
+  /** text boxes outlined in the highlight colour (selected item's labels / reference) */
   focusTexts: SchText[];
   /** search hits outlined in amber */
   matches: SchText[];
@@ -81,6 +81,13 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
   const [painted, setPainted] = useState<{ view: View; page: number; w: number; h: number } | null>(null);
   const [paintFailed, setPaintFailed] = useState(false);
   const [size, setSize] = useState({ w: 800, h: 600 });
+  /** false until the drawing surface has been measured (the default size above is only a placeholder) */
+  const [measured, setMeasured] = useState(false);
+  /**
+   * The last fit that was asked for. It is applied again when the surface changes size
+   * (first layout, rotating a phone, opening the list sheet) until the user pans or zooms.
+   */
+  const stickyFit = useRef<{ box: Box | null; pad: number } | null>({ box: null, pad: 0.02 });
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const drag = useRef<{ id: number; sx: number; sy: number; vx: number; vy: number; moved: boolean } | null>(null);
   const viewRef = useRef(view);
@@ -92,6 +99,7 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
 
   const fit = useCallback(
     (box?: Box | null, pad = 0.08) => {
+      stickyFit.current = { box: box ?? null, pad };
       const b: Box = box ?? [0, 0, page.width, page.height];
       const { w, h } = sizeRef.current;
       const bw = Math.max(b[2] - b[0], 20);
@@ -114,21 +122,24 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
       const next = { w: Math.max(r.width, 50), h: Math.max(r.height, 50) };
       sizeRef.current = next;
       setSize(next);
+      setMeasured(true);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // fit the whole sheet whenever a new page is shown
+  // fit the whole sheet whenever a new page is shown, and keep the requested fit while the surface resizes
   const fittedFor = useRef<SchPage | null>(null);
   useEffect(() => {
-    if (fittedFor.current !== page && size.w > 50) {
+    if (!measured) return;
+    if (fittedFor.current !== page) {
       fittedFor.current = page;
       fit(null, 0.02);
-    }
-  }, [page, size, fit]);
+    } else if (stickyFit.current) fit(stickyFit.current.box, stickyFit.current.pad);
+  }, [page, size, measured, fit]);
 
   const zoomAt = useCallback((factor: number, sx?: number, sy?: number) => {
+    stickyFit.current = null;
     setView((v) => {
       const { w, h } = sizeRef.current;
       const px = sx ?? w / 2;
@@ -155,7 +166,7 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
 
   // paint the real PDF for the visible area; debounced so panning / zooming stays smooth
   useEffect(() => {
-    if (!pdf || paintFailed) return;
+    if (!pdf || paintFailed || !measured) return;
     let cancelled = false;
     let task: { cancel(): void } | null = null;
     const fresh = !painted || painted.page !== page.index;
@@ -194,7 +205,7 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
     };
     // painted is read only to decide the delay
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdf, page, view, size, paintFailed]);
+  }, [pdf, page, view, size, paintFailed, measured]);
 
   const showPdf = !!pdf && !paintFailed;
   const shown = painted && painted.page === page.index ? painted : null;
@@ -219,6 +230,7 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
     else if (e.key === "ArrowUp") setView((v) => ({ ...v, y: v.y - step }));
     else if (e.key === "ArrowDown") setView((v) => ({ ...v, y: v.y + step }));
     else return;
+    if (e.key.startsWith("Arrow")) stickyFit.current = null;
     e.preventDefault();
   };
 
@@ -245,6 +257,7 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
           const dy = e.clientY - d.sy;
           if (!d.moved && Math.hypot(dx, dy) < 4) return;
           d.moved = true;
+          stickyFit.current = null;
           const k = viewRef.current.k;
           setView((v) => ({ ...v, x: d.vx - dx * k, y: d.vy - dy * k }));
         }}
@@ -275,12 +288,33 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
         )}
         <svg width={size.w} height={size.h} viewBox={vb} className="relative block" aria-hidden="true">
           {showPdf ? (
-            <rect x={0} y={0} width={page.width} height={page.height} fill="none" stroke="var(--border)" vectorEffect="non-scaling-stroke" />
+            <rect
+              x={0}
+              y={0}
+              width={page.width}
+              height={page.height}
+              fill={bitmap ? "none" : "#ffffff"}
+              stroke="var(--border)"
+              vectorEffect="non-scaling-stroke"
+            />
           ) : (
             <>
               <rect x={0} y={0} width={page.width} height={page.height} fill="var(--card)" stroke="var(--border)" />
               <BaseDrawing page={page} />
             </>
+          )}
+
+          {/* while a node is selected the rest of the sheet is washed out so the highlight stands out */}
+          {netD && (
+            <rect
+              className="net-dim"
+              x={0}
+              y={0}
+              width={page.width}
+              height={page.height}
+              fill={showPdf ? "#ffffff" : "var(--card)"}
+              fillOpacity={0.68}
+            />
           )}
 
           {/* search hits */}
@@ -300,26 +334,26 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
 
           {/* selected node */}
           {netD && (
-            <g className="net-highlight text-red-600 dark:text-red-500">
+            <g className="net-highlight">
               <path
                 d={netD}
                 fill="none"
-                stroke="currentColor"
-                strokeOpacity={0.22}
-                strokeWidth={9}
+                stroke="var(--net-glow)"
+                strokeOpacity={0.55}
+                strokeWidth={11}
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
               />
               <path
                 d={netD}
                 fill="none"
-                stroke="currentColor"
-                strokeWidth={2.6}
+                stroke="var(--net-highlight)"
+                strokeWidth={2.8}
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
               />
               {netDots.map((d, i) => (
-                <circle key={i} cx={d.x} cy={d.y} r={Math.max(d.r * 1.15, 3.2 * px)} fill="currentColor" />
+                <circle key={i} cx={d.x} cy={d.y} r={Math.max(d.r * 1.15, 3.2 * px)} fill="var(--net-highlight)" />
               ))}
             </g>
           )}
@@ -331,13 +365,22 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
               width={t.x1 - t.x0 + 4 * px}
               height={t.y1 - t.y0 + 4 * px}
               rx={2 * px}
-              className="fill-red-500/15 stroke-red-600 dark:stroke-red-500"
+              className="focus-text"
               strokeWidth={2}
               vectorEffect="non-scaling-stroke"
             />
           ))}
         </svg>
       </div>
+
+      {showPdf && !bitmap && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center" role="status" aria-live="polite">
+          <div className="flex items-center gap-3 rounded-md border border-border bg-popover px-4 py-3 text-sm shadow-md">
+            <Spinner />
+            {t("도면 그리는 중")}
+          </div>
+        </div>
+      )}
 
       <div className="absolute bottom-4 right-4 flex flex-col overflow-hidden rounded-md border border-border bg-popover shadow-sm">
         <Button variant="ghost" size="icon" aria-label={t("확대")} onClick={() => zoomAt(1 / 1.4)}>

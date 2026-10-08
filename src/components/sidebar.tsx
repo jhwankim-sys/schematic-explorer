@@ -1,6 +1,6 @@
 import { useT } from "../i18n.tsx";
-import { useMemo } from "react";
-import { Cpu, Search, Waypoints, X } from "lucide-react";
+import { useMemo, type ReactNode } from "react";
+import { ChevronDown, ChevronUp, Cpu, Search, Waypoints, X } from "lucide-react";
 import { Button, cn, Input, TabStrip } from "./ui.tsx";
 import type { CompEntry, NetEntry } from "../lib/schematic/model.ts";
 
@@ -19,6 +19,13 @@ interface Props {
   selectedComp: string | null;
   onPickNet: (e: NetEntry) => void;
   onPickComp: (e: CompEntry) => void;
+  /** details of the current selection, shown under the lists (null when nothing is selected) */
+  detail: ReactNode;
+  /** one-line summary of the selection for the collapsed sheet on small screens */
+  selectionSummary: { title: string; sub?: string } | null;
+  /** small screens: the panel is a sheet under the drawing that opens and closes */
+  sheetOpen: boolean;
+  onSheetOpen: (open: boolean) => void;
 }
 
 export function SchematicSidebar({
@@ -34,6 +41,10 @@ export function SchematicSidebar({
   selectedComp,
   onPickNet,
   onPickComp,
+  detail,
+  selectionSummary,
+  sheetOpen,
+  onSheetOpen,
 }: Props) {
   const t = useT();
   const q = query.trim().toUpperCase();
@@ -47,7 +58,42 @@ export function SchematicSidebar({
   const signal = fNets.filter((n) => !n.power);
 
   return (
-    <aside aria-label={t("노드와 부품 목록")} className="flex min-h-0 w-56 shrink-0 sm:w-72 flex-col border-r border-border bg-card">
+    <aside
+      aria-label={t("노드와 부품 목록")}
+      className={cn(
+        "flex min-h-0 w-full shrink-0 flex-col border-t border-border bg-card md:h-auto md:w-72 md:border-r md:border-t-0",
+        sheetOpen && "max-md:h-[62dvh]",
+      )}
+    >
+      {/* small screens: a handle that opens the lists; the drawing keeps the rest of the screen */}
+      <button
+        type="button"
+        aria-expanded={sheetOpen}
+        aria-controls="side-body"
+        onClick={() => onSheetOpen(!sheetOpen)}
+        className="flex min-h-12 w-full shrink-0 items-center gap-3 px-4 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:hidden"
+      >
+        {selectionSummary && !sheetOpen ? (
+          <>
+            <span aria-hidden="true" className="selection-dot size-2.5 shrink-0 rounded-full" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-mono font-semibold">{selectionSummary.title}</span>
+              {selectionSummary.sub && <span className="block truncate text-xs text-muted-foreground">{selectionSummary.sub}</span>}
+            </span>
+          </>
+        ) : (
+          <>
+            <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">
+              {t(`노드 ${nets.length} · 부품 ${comps.length}`, `${nets.length} nets · ${comps.length} parts`)}
+            </span>
+          </>
+        )}
+        <span className="sr-only">{t(sheetOpen ? "목록 닫기" : "목록 열기")}</span>
+        {sheetOpen ? <ChevronDown className="size-4 shrink-0" aria-hidden="true" /> : <ChevronUp className="size-4 shrink-0" aria-hidden="true" />}
+      </button>
+
+      <div id="side-body" className={cn("min-h-0 flex-1 flex-col border-t border-border md:flex md:border-t-0", sheetOpen ? "flex" : "hidden")}>
       <form
         role="search"
         className="border-b border-border p-3"
@@ -149,6 +195,9 @@ export function SchematicSidebar({
           </ul>
         </div>
       )}
+
+      {detail}
+      </div>
     </aside>
   );
 }
@@ -184,7 +233,7 @@ function NetGroup({
               >
                 <span
                   aria-hidden="true"
-                  className={cn("size-2 shrink-0 rounded-full", active ? "bg-red-600" : n.power ? "bg-primary" : "bg-border")}
+                  className={cn("size-2 shrink-0 rounded-full", active ? "selection-dot" : n.power ? "bg-primary" : "bg-border")}
                 />
                 <span className="min-w-0 flex-1 truncate font-mono">{n.name}</span>
                 {n.labelCount > 1 && (
