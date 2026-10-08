@@ -1,0 +1,30 @@
+{
+  "name": "schematic-explorer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "analyze": "node scripts/analyze-cli.ts"
+  },
+  "dependencies": {
+    "lucide-react": "^1.14.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "unpdf": "^1.6.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.4",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "tailwindcss": "^4.2.4",
+    "typescript": "~5.8.3",
+    "vite": "^7.3.5"
+  },
+  "engines": { "node": ">=22.6" }
+}
