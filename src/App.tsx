@@ -2,7 +2,7 @@ import { useT } from "./i18n.tsx";
 import { installFileDrop } from "./lib/file-drop.ts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, FileUp, Focus, X } from "lucide-react";
-import { Badge, Button, Spinner } from "./components/ui.tsx";
+import { Badge, Button, cn, Spinner } from "./components/ui.tsx";
 import { SchematicSidebar, type SidebarTab } from "./components/sidebar.tsx";
 import { SchematicViewer, type PdfRenderSource, type ViewerHandle } from "./components/viewer.tsx";
 import { UploadHero } from "./components/upload-hero.tsx";
@@ -35,6 +35,10 @@ export function App({ active = true }: { active?: boolean }) {
   const [matchIdx, setMatchIdx] = useState(0);
   const [tab, setTab] = useState<SidebarTab>("nets");
   const [error, setError] = useState<string | null>(null);
+  /** selection details in the sidebar can be folded away */
+  const [detailOpen, setDetailOpen] = useState(true);
+  /** small screens: whether the list sheet under the drawing is open */
+  const [sheetOpen, setSheetOpen] = useState(false);
   const viewer = useRef<ViewerHandle>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +60,7 @@ export function App({ active = true }: { active?: boolean }) {
       setPageIdx(0);
       setSel(null);
       setQuery("");
+      setSheetOpen(false);
     } catch {
       setError("이 PDF에서 회로도를 읽지 못했습니다. 손상되었거나 암호가 걸린 파일인지 확인해 주세요.");
     } finally {
@@ -95,6 +100,7 @@ export function App({ active = true }: { active?: boolean }) {
   const pickNetEntry = useCallback(
     (e: NetEntry) => {
       const w = e.where.find((x) => x.page === pageIdx) ?? e.where[0];
+      setSheetOpen(false);
       selectNet(w.page, w.netIds, e.name);
     },
     [pageIdx, selectNet],
@@ -105,6 +111,7 @@ export function App({ active = true }: { active?: boolean }) {
       if (!doc) return;
       const w = c.where.find((x) => x.page === pageIdx) ?? c.where[0];
       const p = doc.pages[w.page];
+      setSheetOpen(false);
       setPageIdx(w.page);
       setSel({ type: "component", ref: c.ref });
       const b = unionBox(w.textIds.map((id) => textBox(p.texts[id])));
@@ -187,6 +194,93 @@ export function App({ active = true }: { active?: boolean }) {
     viewer.current?.fit([t.x0 - 40, t.y0 - 28, t.x1 + 40, t.y1 + 28], 0.05);
   };
 
+  const selectionSummary =
+    netInfo && sel?.type === "net"
+      ? {
+          title: sel.name || t("이름 없는 노드"),
+          sub: t(`배선 ${netInfo.segs}개 · 접점 ${netInfo.dots}개`, `${netInfo.segs} wires · ${netInfo.dots} junctions`),
+        }
+      : compInfo
+        ? { title: compInfo.ref, sub: compInfo.values.join(" · ") || undefined }
+        : null;
+
+  // selection details live in the sidebar (under the lists) so they never cover the drawing
+  const detailHead = (title: string, mono = true) => (
+    <div className="flex items-center gap-2">
+      <span aria-hidden="true" className="selection-dot size-2.5 shrink-0 rounded-full" />
+      <h2 className={cn("min-w-0 flex-1 truncate text-sm font-semibold", mono && "font-mono")} title={title}>
+        {title}
+      </h2>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        aria-expanded={detailOpen}
+        aria-controls="selection-detail"
+        aria-label={t(detailOpen ? "선택 정보 접기" : "선택 정보 펼치기")}
+        onClick={() => setDetailOpen((o) => !o)}
+      >
+        {detailOpen ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
+      </Button>
+      <Button variant="ghost" size="icon" className="-mr-1 size-7" aria-label={t("선택 해제")} onClick={() => setSel(null)}>
+        <X aria-hidden="true" />
+      </Button>
+    </div>
+  );
+  const detail =
+    netInfo && sel?.type === "net" ? (
+      <section aria-label={t("선택한 노드")} className="shrink-0 border-t border-border bg-card px-3 py-2">
+        {detailHead(sel.name || t("이름 없는 노드"), !!sel.name)}
+        {detailOpen && (
+          <div id="selection-detail" className="pb-1">
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t(`배선 ${netInfo.segs}개 · 접점 ${netInfo.dots}개`, `${netInfo.segs} wires · ${netInfo.dots} junctions`)}
+            </p>
+            {netInfo.labels.length > 0 && (
+              <div className="mt-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("연결된 라벨·핀 이름")}</h3>
+                <ul className="mt-1.5 flex max-h-28 flex-wrap gap-1 overflow-y-auto">
+                  {netInfo.labels.map(([s, n]) => (
+                    <li key={s}>
+                      <Badge className="font-mono">
+                        {s}
+                        {n > 1 && <span className="text-muted-foreground">×{n}</span>}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3 w-full"
+              onClick={() => {
+                setSheetOpen(false);
+                if (page) viewer.current?.fit(netBox(page, sel.netIds), 0.12);
+              }}
+            >
+              <Focus aria-hidden="true" />
+              {t("노드 전체 보기")}
+            </Button>
+          </div>
+        )}
+      </section>
+    ) : compInfo ? (
+      <section aria-label={t("선택한 부품")} className="shrink-0 border-t border-border bg-card px-3 py-2">
+        {detailHead(compInfo.ref)}
+        {detailOpen && (
+          <div id="selection-detail" className="pb-1">
+            {compInfo.values.length > 0 && <p className="mt-1 font-mono text-sm">{compInfo.values.join(" · ")}</p>}
+            <Button size="sm" variant="outline" className="mt-3 w-full" onClick={() => pickComp(compInfo)}>
+              <Focus aria-hidden="true" />
+              {t("부품 위치로 이동")}
+            </Button>
+          </div>
+        )}
+      </section>
+    ) : null;
+
   return (
     <div className="viewer-app relative flex h-full min-h-0 flex-col bg-background">
       <a
@@ -235,16 +329,23 @@ export function App({ active = true }: { active?: boolean }) {
                   e.target.value = "";
                 }}
               />
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={!!busy}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="max-sm:px-2"
+                aria-label={t("다른 PDF 열기")}
+                onClick={() => fileRef.current?.click()}
+                disabled={!!busy}
+              >
                 <FileUp aria-hidden="true" />
-                {t("다른 PDF 열기")}
+                <span className="max-sm:hidden">{t("다른 PDF 열기")}</span>
               </Button>
             </>
           )}
         </div>
       </header>
 
-      <main className="flex min-h-0 flex-1">
+      <main className="flex min-h-0 flex-1 flex-col-reverse md:flex-row">
         {doc && page && (
           <SchematicSidebar
             query={query}
@@ -262,10 +363,14 @@ export function App({ active = true }: { active?: boolean }) {
             selectedComp={sel?.type === "component" ? sel.ref : null}
             onPickNet={pickNetEntry}
             onPickComp={pickComp}
+            detail={detail}
+            selectionSummary={selectionSummary}
+            sheetOpen={sheetOpen}
+            onSheetOpen={setSheetOpen}
           />
         )}
 
-        <section aria-label={t("도면")} className="relative min-w-0 flex-1">
+        <section aria-label={t("도면")} className="relative min-h-0 min-w-0 flex-1">
           {!doc || !page ? (
             <UploadHero onFile={(f) => void openFile(f)} busy={!!busy} />
           ) : (
@@ -295,69 +400,6 @@ export function App({ active = true }: { active?: boolean }) {
                 <ChevronDown aria-hidden="true" />
               </Button>
             </div>
-          )}
-
-          {netInfo && sel?.type === "net" && (
-            <aside
-              aria-label={t("선택한 노드")}
-              className="absolute left-3 top-3 w-72 rounded-md border border-border bg-popover p-3 shadow-md"
-            >
-              <div className="flex items-start gap-2">
-                <span aria-hidden="true" className="mt-1.5 size-2.5 shrink-0 rounded-full bg-red-600" />
-                <h2 className="min-w-0 flex-1 break-all font-mono text-base font-semibold">
-                  {sel.name || t("이름 없는 노드")}
-                </h2>
-                <Button variant="ghost" size="icon" className="-mr-1 -mt-1 size-7" aria-label={t("선택 해제")} onClick={() => setSel(null)}>
-                  <X aria-hidden="true" />
-                </Button>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t(`배선 ${netInfo.segs}개 · 접점 ${netInfo.dots}개`, `${netInfo.segs} wires · ${netInfo.dots} junctions`)}
-              </p>
-              {netInfo.labels.length > 0 && (
-                <div className="mt-3">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("연결된 라벨·핀 이름")}</h3>
-                  <ul className="mt-1.5 flex max-h-32 flex-wrap gap-1 overflow-y-auto">
-                    {netInfo.labels.map(([s, n]) => (
-                      <li key={s}>
-                        <Badge className="font-mono">
-                          {s}
-                          {n > 1 && <span className="text-muted-foreground">×{n}</span>}
-                        </Badge>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-3 w-full"
-                onClick={() => page && viewer.current?.fit(netBox(page, sel.netIds), 0.12)}
-              >
-                <Focus aria-hidden="true" />
-                {t("노드 전체 보기")}
-              </Button>
-            </aside>
-          )}
-
-          {compInfo && (
-            <aside
-              aria-label={t("선택한 부품")}
-              className="absolute left-3 top-3 w-64 rounded-md border border-border bg-popover p-3 shadow-md"
-            >
-              <div className="flex items-start gap-2">
-                <h2 className="min-w-0 flex-1 font-mono text-base font-semibold">{compInfo.ref}</h2>
-                <Button variant="ghost" size="icon" className="-mr-1 -mt-1 size-7" aria-label={t("선택 해제")} onClick={() => setSel(null)}>
-                  <X aria-hidden="true" />
-                </Button>
-              </div>
-              {compInfo.values.length > 0 && <p className="mt-1 font-mono text-sm">{compInfo.values.join(" · ")}</p>}
-              <Button size="sm" variant="outline" className="mt-3 w-full" onClick={() => pickComp(compInfo)}>
-                <Focus aria-hidden="true" />
-                {t("부품 위치로 이동")}
-              </Button>
-            </aside>
           )}
 
           {error && (

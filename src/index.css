@@ -15,6 +15,9 @@
   --border: #dce3ec;
   --ring: #2182d6;
   --radius: 0.375rem;
+  /* selected node: colours CAD drawings rarely use (KiCad sheets are full of red and green) */
+  --net-highlight: #0097b2;
+  --net-glow: #00e5ff;
   color-scheme: light;
 }
 
@@ -184,9 +187,14 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-
   .upload-art { display: none; }
   .upload-copy h1 { font-size: 29px; }
   .viewer-status > span:last-child { display: none; }
-  .viewer-app main > aside { width: 150px; }
 }
 
+.focus-text { fill: color-mix(in srgb, var(--net-glow) 22%, transparent); stroke: var(--net-highlight); }
+.selection-dot { background: var(--net-highlight); box-shadow: 0 0 0 3px color-mix(in srgb, var(--net-glow) 35%, transparent); }
+
 @media (forced-colors: active) {
-  .net-highlight { stroke: Highlight; }
+  .net-highlight path { stroke: Highlight; }
+  .net-highlight circle { fill: Highlight; }
+  .focus-text { stroke: Highlight; }
+  .net-dim { display: none; }
 }
