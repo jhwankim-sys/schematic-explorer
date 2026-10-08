@@ -39,7 +39,7 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
   ] as const;
   const steps = [
     [t("PDF 열기", "Open a PDF"), t("시작하기를 누르고 PDF를 선택하거나 작업 화면에 끌어다 놓으세요. CAD에서 내보낸 벡터 PDF를 권장합니다.", "Get started, then choose a PDF or drop it into the workspace. Vector PDFs exported from CAD work best.")],
-    [t("배선 선택하기", "Select a wire"), t("분석이 끝나면 배선을 클릭하세요. 선택한 노드의 연결이 빨간색으로 강조됩니다. 왼쪽 목록에서도 노드와 부품을 선택할 수 있습니다.", "After analysis, click a wire to highlight its net in red. You can also select nets and components from the sidebar.")],
+    [t("배선 선택하기", "Select a wire"), t("분석이 끝나면 배선을 클릭하세요. 선택한 노드의 연결이 청록색으로 강조되고 나머지 도면은 흐려집니다. 목록에서도 노드와 부품을 선택할 수 있습니다.", "After analysis, click a wire to highlight its net in cyan while the rest of the drawing fades. You can also select nets and components from the list.")],
     [t("검색하고 살펴보기", "Search and inspect"), t("검색창에 신호나 부품 이름을 입력하세요. 휠로 확대·축소하고 드래그로 이동합니다. + / −, 0, 방향키도 사용할 수 있습니다.", "Search a signal or component name. Use the wheel to zoom and drag to pan. Keyboard shortcuts: + / − to zoom, 0 to fit, and arrow keys to pan.")],
     [t("다른 도면으로 교체하기", "Replace your drawing"), t("다른 PDF를 현재 뷰어에 끌어다 놓거나 ‘다른 PDF 열기’를 누르세요. 같은 작업 화면에서 새 도면이 열립니다. 여러 장은 상단 페이지 번호로 이동합니다.", "Drop another PDF onto the current viewer or choose Open another PDF. It replaces the drawing in the same workspace. Use the page numbers to navigate multi-page files.")],
   ];

@@ -25,6 +25,8 @@ const english: Record<string, string> = {
   "로컬 처리": "Local processing", "회원가입 없음": "No sign-up", "연결 분석": "Net analysis",
   "원본 PDF": "Original PDF", "배선을 클릭해 연결을 확인하세요": "Click a wire to inspect its net",
   "휠: 확대·축소 · 드래그: 이동": "Wheel: zoom · Drag: pan",
+  "도면 그리는 중": "Rendering drawing", "선택 정보 접기": "Collapse selection details", "선택 정보 펼치기": "Expand selection details",
+  "목록 열기": "Open list", "목록 닫기": "Close list", "선택한 항목": "Selection",
 };
 export function useT() {
   const language = useContext(LanguageContext);
