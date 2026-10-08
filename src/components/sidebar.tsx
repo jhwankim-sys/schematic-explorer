@@ -1,8 +1,8 @@
 import { useT } from "../i18n.tsx";
 import { useMemo, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, Cpu, Search, Waypoints, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Cpu, Download, Search, Waypoints, X } from "lucide-react";
 import { Button, cn, Input, TabStrip } from "./ui.tsx";
-import type { CompEntry, NetEntry } from "../lib/schematic/model.ts";
+import { rankFilter, type CompEntry, type NetEntry } from "../lib/schematic/model.ts";
 
 export type SidebarTab = "nets" | "parts";
 
@@ -19,6 +19,8 @@ interface Props {
   selectedComp: string | null;
   onPickNet: (e: NetEntry) => void;
   onPickComp: (e: CompEntry) => void;
+  /** save the list of the open tab as a CSV file */
+  onExport: (tab: SidebarTab) => void;
   /** details of the current selection, shown under the lists (null when nothing is selected) */
   detail: ReactNode;
   /** one-line summary of the selection for the collapsed sheet on small screens */
@@ -41,6 +43,7 @@ export function SchematicSidebar({
   selectedComp,
   onPickNet,
   onPickComp,
+  onExport,
   detail,
   selectionSummary,
   sheetOpen,
@@ -48,12 +51,9 @@ export function SchematicSidebar({
 }: Props) {
   const t = useT();
   const q = query.trim().toUpperCase();
-  const fNets = useMemo(() => (q ? nets.filter((n) => n.name.toUpperCase().includes(q)) : nets), [nets, q]);
-  const fComps = useMemo(
-    () =>
-      q ? comps.filter((c) => c.ref.toUpperCase().includes(q) || c.values.some((v) => v.toUpperCase().includes(q))) : comps,
-    [comps, q],
-  );
+  // exact matches come first so "R1" is not buried under R10…R19
+  const fNets = useMemo(() => (q ? rankFilter(nets, q, (n) => [n.name]) : nets), [nets, q]);
+  const fComps = useMemo(() => (q ? rankFilter(comps, q, (c) => [c.ref, ...c.values]) : comps), [comps, q]);
   const power = fNets.filter((n) => n.power);
   const signal = fNets.filter((n) => !n.power);
 
@@ -155,6 +155,19 @@ export function SchematicSidebar({
           },
         ]}
       />
+
+      <div className="flex items-center justify-end px-3 pt-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+          disabled={tab === "nets" ? nets.length === 0 : comps.length === 0}
+          onClick={() => onExport(tab)}
+        >
+          <Download aria-hidden="true" />
+          {tab === "nets" ? t("노드 목록 CSV") : t("부품 목록 CSV")}
+        </Button>
+      </div>
 
       {tab === "nets" && (
         <div role="tabpanel" id="side-panel-nets" aria-labelledby="side-tab-nets" className="min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-2">

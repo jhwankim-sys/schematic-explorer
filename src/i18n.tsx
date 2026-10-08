@@ -26,6 +26,9 @@ const english: Record<string, string> = {
   "원본 PDF": "Original PDF", "배선을 클릭해 연결을 확인하세요": "Click a wire to inspect its net",
   "휠: 확대·축소 · 드래그: 이동": "Wheel: zoom · Drag: pan",
   "도면 그리는 중": "Rendering drawing", "선택 정보 접기": "Collapse selection details", "선택 정보 펼치기": "Expand selection details",
+  "노드 목록 CSV": "Nets CSV", "부품 목록 CSV": "Parts CSV", "정확히 일치": "exact",
+  "이 페이지에는 이 노드가 없습니다.": "This net is not on this page.", "있는 페이지": "Pages",
+  "홈으로": "Home",
   "목록 열기": "Open list", "목록 닫기": "Close list", "선택한 항목": "Selection",
 };
 export function useT() {
