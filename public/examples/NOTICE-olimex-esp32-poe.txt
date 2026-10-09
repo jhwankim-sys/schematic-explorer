@@ -1,0 +1,6 @@
+ESP32-PoE revision I schematic (olimex-esp32-poe-rev-i.pdf)
+Copyright OLIMEX Ltd.
+Source: https://github.com/OLIMEX/ESP32-POE (HARDWARE/ESP32-PoE-hardware-revision-I/ESP32-PoE_Rev_I.pdf)
+The ESP32-PoE hardware design is released by OLIMEX under the Apache License 2.0
+(see LICENSE-olimex-esp32-poe.txt). The file is redistributed unchanged as an example
+for Schematic Viewer. OLIMEX is not affiliated with and does not endorse this site.
