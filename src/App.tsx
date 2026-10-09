@@ -8,6 +8,7 @@ import { SchematicViewer, type PdfRenderSource, type ViewerHandle } from "./comp
 import { UploadHero } from "./components/upload-hero.tsx";
 import type { SchText } from "./lib/schematic/analyze.ts";
 import { loadSchematic, type Schematic } from "./lib/schematic/extract.ts";
+import { track } from "./lib/analytics.ts";
 import {
   buildCompEntries,
   buildNetEntries,
@@ -24,8 +25,14 @@ import {
   type Selection,
 } from "./lib/schematic/model.ts";
 
+/** sample schematic shipped with the site: Olimex ESP32-PoE rev. I (open hardware, Apache-2.0) */
+const EXAMPLE_URL = "./examples/olimex-esp32-poe-rev-i.pdf";
+const EXAMPLE_NAME = "Olimex-ESP32-PoE-Rev-I (example).pdf";
+
 interface AppProps {
   active?: boolean;
+  /** open the bundled example as soon as the workspace is shown */
+  autoExample?: boolean;
   /** shown at the start / end of the toolbar (site brand, language switch) so the workspace needs one header row only */
   headerStart?: ReactNode;
   headerEnd?: ReactNode;
@@ -57,7 +64,7 @@ function useLayout() {
   return state;
 }
 
-export function App({ active = true, headerStart, headerEnd }: AppProps) {
+export function App({ active = true, autoExample = false, headerStart, headerEnd }: AppProps) {
   const t = useT();
   const [dragging, setDragging] = useState(false);
   const [documentSerial, setDocumentSerial] = useState(0);
@@ -84,15 +91,23 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
   /** set while the query comes from typing: the view then moves to the first hit without Enter */
   const typed = useRef(false);
 
-  const openFile = useCallback(async (file: File) => {
+  /** the PDF opened but holds no lines or text to analyze (a scan / photo): shown over the drawing */
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const openFile = useCallback(async (file: File, source: "picker" | "drop" | "example" = "picker") => {
     if (loading.current) return;
     if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
-      setError("PDF 파일만 열 수 있습니다.");
+      setError("PDF 파일만 열 수 있습니다. 회로도 프로그램에서 PDF로 내보낸 파일을 선택해 주세요.");
+      track({ name: "error", params: { type: "not_pdf" } });
       return;
     }
+    if (source === "example") track({ name: "example_load", params: {} });
+    else track({ name: "file_open", params: { source, size_kb: Math.round(file.size / 1024) } });
     loading.current = true;
     setError(null);
+    setNotice(null);
     setBusy("도면 읽는 중");
+    const t0 = performance.now();
     try {
       const d = await loadSchematic(file, (m) => setBusy(m));
       setDoc(d);
@@ -103,17 +118,55 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
       setSel(null);
       setQuery("");
       setSheetOpen(false);
-    } catch {
-      setError("이 PDF에서 회로도를 읽지 못했습니다. 손상되었거나 암호가 걸린 파일인지 확인해 주세요.");
+      const nets = new Set(d.pages.flatMap((p) => p.nets.filter((n) => n.name).map((n) => n.name.toUpperCase()))).size;
+      const parts = new Set(d.pages.flatMap((p) => p.components.map((c) => c.ref))).size;
+      const textLayer = d.pages.some((p) => p.texts.length > 0);
+      // nothing to analyze: no wiring and no text anywhere (scanned or image-only PDF)
+      if (d.pages.every((p) => p.segs.length === 0 && p.texts.length === 0)) {
+        setNotice(
+          "이 PDF에는 선과 글자 정보가 없어 연결을 분석할 수 없습니다. 스캔하거나 이미지로 저장한 PDF로 보입니다. 도면은 볼 수 있으며, 회로도 프로그램에서 PDF로 다시 내보내면 분석할 수 있습니다.",
+        );
+        track({ name: "error", params: { type: "no_vector" } });
+      }
+      track({ name: "view_complete", params: { pages: d.pages.length, nets, parts, load_ms: Math.round(performance.now() - t0), text_layer: textLayer } });
+    } catch (e) {
+      const encrypted = /password/i.test(String((e as Error)?.name ?? "") + String((e as Error)?.message ?? ""));
+      setError(
+        encrypted
+          ? "암호가 걸린 PDF는 열 수 없습니다. 암호를 해제한 PDF로 다시 저장한 뒤 열어 주세요."
+          : "이 PDF에서 회로도를 읽지 못했습니다. 파일이 손상되지 않았는지 확인하고, 회로도 프로그램에서 PDF로 다시 내보내 보세요.",
+      );
+      track({ name: "error", params: { type: encrypted ? "encrypted" : "read_failed" } });
     } finally {
       loading.current = false;
       setBusy(null);
     }
   }, []);
 
+  /** open the bundled public example (Olimex ESP32-PoE, Apache-2.0) */
+  const openExample = useCallback(async () => {
+    try {
+      const res = await fetch(EXAMPLE_URL);
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      await openFile(new File([blob], EXAMPLE_NAME, { type: "application/pdf" }), "example");
+    } catch {
+      setError("예제 파일을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
+      track({ name: "error", params: { type: "read_failed" } });
+    }
+  }, [openFile]);
+
+  // the example demo page links to #example: open the sample right away
+  const exampleOpened = useRef(false);
+  useEffect(() => {
+    if (!active || !autoExample || exampleOpened.current) return;
+    exampleOpened.current = true;
+    void openExample();
+  }, [active, autoExample, openExample]);
+
   useEffect(() => {
     if (!active) { setDragging(false); return; }
-    return installFileDrop(window, (file) => { void openFile(file); }, setDragging);
+    return installFileDrop(window, (file) => { void openFile(file, "drop"); }, setDragging);
   }, [active, openFile]);
 
   const page = doc?.pages[pageIdx] ?? null;
@@ -554,7 +607,7 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
                 aria-label={t("다른 회로도 PDF 선택")}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) void openFile(f);
+                  if (f) void openFile(f, "picker");
                   e.target.value = "";
                 }}
               />
@@ -623,7 +676,7 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
 
         <section aria-label={t("도면")} className="relative min-h-0 min-w-0 flex-1">
           {!doc || !page ? (
-            <UploadHero onFile={(f) => void openFile(f)} busy={!!busy} />
+            <UploadHero onFile={(f) => void openFile(f, "picker")} onExample={() => void openExample()} busy={!!busy} />
           ) : (
             <SchematicViewer
               key={documentSerial}
@@ -636,7 +689,17 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
               matches={matches}
               activeMatch={matchIdx}
               onPick={onPick}
+              onRenderError={() => track({ name: "error", params: { type: "render_failed" } })}
             />
+          )}
+
+          {doc && notice && (
+            <div role="status" className="absolute inset-x-3 bottom-16 mx-auto flex max-w-xl items-start gap-2 rounded-md border border-amber-300 bg-popover px-4 py-3 text-sm shadow-md">
+              <p className="min-w-0 flex-1 leading-relaxed">{t(notice)}</p>
+              <Button variant="ghost" size="icon" className="size-7 shrink-0" aria-label={t("알림 닫기")} onClick={() => setNotice(null)}>
+                <X aria-hidden="true" />
+              </Button>
+            </div>
           )}
 
           {doc && page && layout.side && !panelOpen && (
@@ -669,7 +732,7 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
           {error && (
             <div
               role="alert"
-              className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-md border border-red-300 bg-popover px-4 py-2 text-sm text-red-700 shadow-md dark:text-red-300"
+              className="absolute bottom-4 left-1/2 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-md border border-red-300 bg-popover px-4 py-2 text-sm text-red-700 shadow-md dark:text-red-300"
             >
               {t(error)}
               <Button variant="ghost" size="icon" className="size-7" aria-label={t("알림 닫기")} onClick={() => setError(null)}>
