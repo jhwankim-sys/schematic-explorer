@@ -41,6 +41,8 @@ interface Props {
   matches: SchText[];
   activeMatch: number;
   onPick: (x: number, y: number, tolerance: number) => void;
+  /** the PDF could not be painted (the outline drawing is shown instead) */
+  onRenderError?: () => void;
   ref?: Ref<ViewerHandle>;
 }
 
@@ -75,7 +77,7 @@ const BaseDrawing = memo(function BaseDrawing({ page }: { page: SchPage }) {
   );
 });
 
-export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, matches, activeMatch, onPick, ref }: Props) {
+export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, matches, activeMatch, onPick, onRenderError, ref }: Props) {
   const maskId = useId().replace(/:/g, "");
   const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -201,7 +203,10 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, ma
           c.getContext("2d")?.drawImage(off, 0, 0);
           setPainted({ view, page: page.index, w: size.w, h: size.h });
         } catch (e) {
-          if (!cancelled && !/cancel/i.test(String((e as Error)?.name ?? e))) setPaintFailed(true);
+          if (!cancelled && !/cancel/i.test(String((e as Error)?.name ?? e))) {
+            setPaintFailed(true);
+            onRenderError?.();
+          }
         }
       },
       fresh ? 0 : 140,

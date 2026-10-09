@@ -31,8 +31,19 @@ const english: Record<string, string> = {
   "홈으로": "Home",
   "목록 열기": "Open list", "목록 접기": "Hide list", "목록": "List", "라벨 위치": "Labels", "이전 라벨": "Previous label", "다음 라벨": "Next label",
   "같은 이름 라벨로 차례로 이동": "Click again to step through its labels", "목록 닫기": "Close list", "선택한 항목": "Selection",
+  "PDF 파일만 열 수 있습니다. 회로도 프로그램에서 PDF로 내보낸 파일을 선택해 주세요.": "Only PDF files can be opened. Choose a PDF exported from your schematic program.",
+  "암호가 걸린 PDF는 열 수 없습니다. 암호를 해제한 PDF로 다시 저장한 뒤 열어 주세요.": "Password-protected PDFs can't be opened. Save a copy without the password and open that.",
+  "이 PDF에서 회로도를 읽지 못했습니다. 파일이 손상되지 않았는지 확인하고, 회로도 프로그램에서 PDF로 다시 내보내 보세요.": "Unable to read this PDF. Check that the file isn't damaged, or export the PDF again from your schematic program.",
+  "이 PDF에는 선과 글자 정보가 없어 연결을 분석할 수 없습니다. 스캔하거나 이미지로 저장한 PDF로 보입니다. 도면은 볼 수 있으며, 회로도 프로그램에서 PDF로 다시 내보내면 분석할 수 있습니다.": "This PDF has no line or text data, so its connections can't be analyzed. It looks like a scan or an image saved as PDF. You can still view the drawing; export the PDF again from your schematic program to analyze it.",
+  "예제 파일을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.": "Couldn't load the example file. Check your internet connection and try again.",
+  "무엇을 여나요": "What it opens", "지원 형식": "Supported files", "파일 저장": "Your file",
 };
 export function useT() {
   const language = useContext(LanguageContext);
   return useCallback((ko: string, en?: string) => language === "en" ? en ?? english[ko] ?? ko : ko, [language]);
+}
+/** link to a static content page ("/guide/") in the current language ("/en/guide/") */
+export function usePageHref() {
+  const language = useContext(LanguageContext);
+  return useCallback((path: string) => (language === "en" ? "/en" + path : path), [language]);
 }

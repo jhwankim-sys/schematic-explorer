@@ -54,6 +54,24 @@ npm run dev        # 개발 서버 → 브라우저에서 http://localhost:5173
 - **개인정보·업로드 정책**: 이 도구는 파일을 서버로 보내지 않습니다. 사이트에 "업로드한 PDF는 브라우저 안에서만 처리되며 저장·전송되지 않습니다" 같은 안내 문구를 넣으면 사용자 신뢰에 도움이 됩니다. 나중에 서버 저장 기능을 추가한다면 개인정보처리방침이 필요합니다.
 - **접속 분석 도구(Google Analytics 등)를 붙일 경우** 파일 이름이나 노드 이름이 이벤트로 전송되지 않도록 주의하세요.
 - **오픈소스 고지**: 사용한 라이브러리의 라이선스는 `THIRD_PARTY_NOTICES.md` 참고.
+- **CSP와 광고·통계**: GA4나 AdSense를 켜면 Google 도메인 스크립트가 필요하므로 위 CSP를 그대로 쓰면 막힙니다. 해당 도메인을 허용하도록 고쳐 주세요.
+
+### 사이트 설정과 콘텐츠 페이지 (`site.config.json`, `scripts/pages/`)
+
+`npm run build`는 도구(vite) 빌드 뒤에 `node scripts/pages/build.ts`로 정적 글 페이지를 만듭니다.
+
+- 글: `scripts/pages/content/*.ts` (한국어 `/guide/`, 영어 `/en/guide/`). 사용법·지원 형식·예제·부품 찾기·회로도 읽기·FAQ·소개·문의·개인정보처리방침·이용약관.
+- 함께 만들어지는 것: `sitemap.xml`, `robots.txt`, 각 페이지의 canonical·hreflang.
+- `site.config.json` 값을 채우고 다시 배포하면 자동 반영됩니다. 비어 있으면 아무것도 넣지 않습니다.
+
+| 키 | 내용 |
+|---|---|
+| `contactEmail` | 문의 페이지·개인정보처리방침에 표시할 이메일 |
+| `ga4MeasurementId` | GA4 측정 ID (`G-XXXXXXXXXX`). 넣으면 통계와 이벤트(file_open, example_load, view_complete, error)가 켜지고 개인정보처리방침 문구가 함께 바뀝니다 |
+| `googleSiteVerification` | Search Console HTML 태그 방식의 `content` 값 |
+| `naverSiteVerification` | 네이버 서치어드바이저 HTML 태그 방식의 `content` 값 |
+
+도구 동작이 바뀌면 글 내용(특히 개인정보처리방침·파일 처리 정책·예제 숫자)도 함께 고쳐 주세요.
 
 ## 3. 폴더 구조
 

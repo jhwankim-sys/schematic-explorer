@@ -74,7 +74,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-
 .site-header nav { display: flex; gap: 22px; margin-left: auto; font-size: 13px; color: var(--muted-foreground); }
 .site-header nav a:hover, .text-link:hover { color: var(--primary); }
 .header-actions { display: flex; align-items: center; gap: 18px; }
-.language-switch { display: flex; border: 1px solid var(--border); border-radius: 7px; padding: 3px; gap: 2px; }
+.language-switch { display: flex; flex-shrink: 0; white-space: nowrap; border: 1px solid var(--border); border-radius: 7px; padding: 3px; gap: 2px; }
 .language-switch button { cursor: pointer; padding: 5px 9px; border-radius: 4px; font-size: 11px; font-weight: 600; }
 .language-switch button[aria-pressed=true] { background: var(--accent); color: var(--accent-foreground); }
 .header-start { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--primary); white-space: nowrap; }
@@ -153,6 +153,22 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-
 .drop-overlay svg { width: 44px; height: 44px; margin: 0 auto 22px; color: #7dd3fc; }
 .drop-overlay h2 { font-size: 23px; font-weight: 650; line-height: 1.5; }
 .drop-overlay p { margin-top: 15px; font-size: 13px; color: #bed5e9; }
+/* first screen: what the tool opens, which files, where the file goes */
+.hero-facts { margin-top: 24px; display: grid; gap: 8px; max-width: 560px; font-size: 13px; line-height: 1.6; color: #c8d8e7; }
+.hero-facts li { display: grid; grid-template-columns: 92px 1fr; gap: 12px; }
+.hero-facts strong { color: #9bd6f4; font-weight: 650; }
+.upload-facts { display: grid; gap: 10px; margin: 16px 0 20px; }
+.upload-facts li { display: flex; gap: 10px; font-size: 13px; line-height: 1.65; color: var(--muted-foreground); }
+.upload-facts li > svg { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; color: var(--primary); }
+.upload-facts strong { display: block; color: var(--foreground); font-weight: 650; }
+.upload-help { margin-top: 14px; font-size: 12px; color: var(--muted-foreground); }
+.upload-help a, .guide-tip a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.article-grid { margin-top: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.article-grid a { display: flex; flex-direction: column; gap: 8px; height: 100%; padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.article-grid a:hover { border-color: var(--primary); }
+.article-grid h3 { font-size: 15px; font-weight: 650; }
+.article-grid p { flex: 1; font-size: 12.5px; line-height: 1.8; color: var(--muted-foreground); }
+.article-grid span { font-size: 12px; font-weight: 600; color: var(--primary); }
 @media (max-width: 900px) {
   .site-header { gap: 15px; flex-wrap: wrap; padding: 14px 20px; }
   .site-header nav { order: 3; width: 100%; justify-content: center; gap: 30px; font-size: 12px; }
@@ -163,6 +179,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-
   .hero-actions { gap: 16px; }
   .editorial-section { gap: 32px; }
   .steps-grid { grid-template-columns: 1fr 1fr; }
+  .article-grid { grid-template-columns: 1fr 1fr; }
   .upload-layout { gap: 25px; }
   .upload-copy { padding: 0; }
 }
@@ -180,6 +197,8 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-
   .editorial-section h2, .section-heading h2, .privacy-section h2 { font-size: 25px; }
   .guide-section, .privacy-section { padding: 40px 0; }
   .policy-grid { grid-template-columns: 1fr; gap: 25px; }
+  .article-grid { grid-template-columns: 1fr; }
+  .hero-facts li { grid-template-columns: 1fr; gap: 0; }
   .steps-grid { gap: 25px 18px; }
   .section-heading { align-items: start; }
   .site-footer > div { margin-left: 0; }
