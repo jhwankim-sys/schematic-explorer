@@ -1,7 +1,5 @@
 import type { PageDef } from "./index.ts";
 
-const REPO = "https://github.com/jhwankim-sys/schematic-explorer";
-
 export const about: PageDef = {
   slug: "about",
   related: ["guide", "faq", "contact"],
@@ -34,7 +32,7 @@ export const about: PageDef = {
 <p>이 과정은 그림에서 연결을 <em>추정</em>하는 것이므로 원본 넷리스트만큼 정확하지는 않습니다. 공개 회로도 묶음으로 매번 정확도를 채점하며 개선하고 있습니다. 한계와 해결 방법은 <a href="${href("help/formats")}">지원 형식과 오류 해결</a>에 정리했습니다.</p>
 
 <h2>누가 만들었나요</h2>
-<p>전자 회로를 다루는 개인 개발자가 운영합니다. 소스 코드는 <a href="${REPO}">GitHub</a>에서 볼 수 있고, 사이트는 GitHub Pages에서 정적 파일로 제공됩니다. 서버에서 실행되는 프로그램이나 데이터베이스는 없습니다.</p>
+<p>전자 회로를 다루는 개인 개발자가 운영합니다. 사이트는 GitHub Pages에서 정적 파일로 제공됩니다. 서버에서 실행되는 프로그램이나 데이터베이스는 없습니다.</p>
 <p>사이트 운영 비용을 위해 광고를 게재할 수 있습니다. 광고는 도구의 기능이나 파일 처리 방식에 영향을 주지 않으며, 광고와 관련된 쿠키는 <a href="${href("privacy")}">개인정보처리방침</a>에 설명되어 있습니다.</p>
 
 <h2>시작하기</h2>
@@ -68,7 +66,7 @@ export const about: PageDef = {
 <p>Because connections are <em>inferred</em> from a drawing, the result is not as exact as the original netlist. Accuracy is scored against a set of public schematics with every change. Limits and fixes are listed in <a href="${href("help/formats")}">Supported files and troubleshooting</a>.</p>
 
 <h2>Who runs it</h2>
-<p>An individual developer who works with electronics. The source code is on <a href="${REPO}">GitHub</a>, and the site is served as static files from GitHub Pages — there is no server-side program or database.</p>
+<p>An individual developer who works with electronics. The site is served as static files from GitHub Pages — there is no server-side program or database.</p>
 <p>Ads may be shown to cover running costs. They do not affect the tool's features or how files are handled; related cookies are explained in the <a href="${href("privacy")}">privacy policy</a>.</p>
 
 <h2>Get started</h2>
