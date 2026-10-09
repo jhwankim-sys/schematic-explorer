@@ -57,6 +57,8 @@ export interface SchText {
   inBody: boolean;
   /** how a label was tied to its wire (debugging aid) */
   via?: "symbol" | "flag" | "along" | "near" | "ground";
+  /** pen colour of the lettering, when the PDF draws it as strokes ("#rrggbb") */
+  color?: string;
 }
 
 export interface SchNet {
@@ -113,6 +115,8 @@ export interface SchPage {
   wireStyle: string;
   /** typical text height on the page */
   textSize: number;
+  /** lettering pens told apart by colour (stroke-lettered drawings), for the maintenance report */
+  pens?: { label: string[]; field: string[]; note: string[] };
 }
 
 /** a link annotation in the same y-up space as text transforms */
@@ -158,6 +162,15 @@ const REFDES = new RegExp(`^(?:[A-Z]{1,4}\\d{2,3}[A-Z]{1,2}|(?:${STD_PREFIX})\\d
 const CONNECTOR_REF = /^\*?W?CN(?:[_\d]|$)/;
 /** descriptive references some libraries use: PWRLED1, MICRO_SD1, USB-UART1 */
 const LOOSE_REF = /^[A-Z][A-Z0-9_-]{1,14}\d{1,3}[A-Z]?$/;
+/** one field of a part description: 20pF, 6.3V, 10ppm, 20%, 3.2x2.5mm, 0.1R */
+const SPEC_FIELD = /^\d+(?:[.,]\d+)?(?:x\d+(?:[.,]\d+)?)*\s?(?:[pnuµμmkKMG]?(?:F|H|V|W|A|R|Hz|ohm|Ω)|%|ppm|mm|mil)$/;
+/** a part description written as fields: Q12MHz/20pF/10ppm/4P/3.2x2.5mm */
+function isSpecList(s: string): boolean {
+  const f = s.split("/");
+  return f.length >= 3 && f.filter((x) => SPEC_FIELD.test(x)).length >= 2;
+}
+/** descriptive references made of words: USB-UART1, LAN_CON1 (a part number has digits before its last field) */
+const WORD_REF = /^[A-Z]{2,}(?:[-_][A-Z]{2,})+\d{1,2}$/;
 
 export function classifyText(str: string): TextKind {
   const s = str.trim();
@@ -169,6 +182,10 @@ export function classifyText(str: string): TextKind {
   if (POWER.test(s)) return "net";
   if (VALUE.test(s)) return "value";
   if (/\s/.test(s)) return "note";
+  // formulas, table headings and links are annotations: Vout=0.8*(1+Ra/Rb), GPIO0:, https://…
+  if (/=|:$|^https?:|^www\./i.test(s)) return "note";
+  if (isSpecList(s)) return "value";
+  if (WORD_REF.test(s)) return "net";
   if (/^\*/.test(s)) return "component";
   if (REFDES.test(s)) return "component";
   if (CONNECTOR_REF.test(s)) return "component";
@@ -400,6 +417,8 @@ interface Prim {
   width: number;
   box: Box;
   glyph: boolean;
+  /** the text whose box the stroke lies in (−1: none) */
+  under: number;
 }
 
 export function analyzePage(
@@ -441,10 +460,16 @@ export function analyzePage(
     const ys = corners.map((p) => H - p[1]);
     return { box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] as Box, h, e, f, ux, uy };
   };
+  /** the same words written twice on the same spot (KiCad 6+ adds a searchable copy of some texts) count once */
+  const written = new Map<string, Box[]>();
   for (const t of visible) {
     const str = t.str.trim();
     if (!str) continue;
     const { box, h, e, f, ux, uy } = toBox(t);
+    const twins = written.get(str) ?? written.set(str, []).get(str)!;
+    const tw = Math.max(0.3, h * 0.25);
+    if (twins.some((o) => Math.abs(o[0] - box[0]) < tw && Math.abs(o[1] - box[1]) < tw && Math.abs(o[2] - box[2]) < tw && Math.abs(o[3] - box[3]) < tw)) continue;
+    twins.push(box);
     texts.push({
       id: texts.length,
       str,
@@ -465,6 +490,9 @@ export function analyzePage(
   const S = Math.min(Math.max(median(texts.filter((t) => t.str.length >= 2).map((t) => t.size)) || 6, 1.2), 40);
 
   // words that continue a sentence on the same baseline are annotations, not labels
+  /** texts the sentence rule turned into notes (with what they were), and the neighbours that did it */
+  const wasKind = new Map<number, TextKind>();
+  const sentencePairs: [number, number][] = [];
   {
     const byLine = new Map<string, SchText[]>();
     for (const t of texts) {
@@ -484,12 +512,31 @@ export function analyzePage(
         const gap = horiz ? b.x0 - a.x1 : b.y0 - a.y1;
         if (gap > -0.3 && gap < Math.min(a.size, b.size) * 0.6 && a.kind !== "pin" && b.kind !== "pin") {
           if (a.kind !== "value" || b.kind !== "value") {
+            for (const t of [a, b]) if (!wasKind.has(t.id)) wasKind.set(t.id, t.kind);
+            sentencePairs.push([a.id, b.id]);
             a.kind = "note";
             b.kind = "note";
           }
         }
       }
     }
+  }
+
+  // headings set in large lettering over two or more lines ("Battery" / "Measurement") are annotations
+  {
+    const big = texts.filter((t) => t.size >= S * 1.5 && t.kind !== "pin");
+    for (const a of big)
+      for (const b of big) {
+        if (a === b || a.rot !== b.rot || Math.abs(a.size - b.size) > a.size * 0.1) continue;
+        const horiz = a.rot === 0;
+        // next line down (or across, for turned lettering), starting or centred on the same edge
+        const pitch = horiz ? b.ay - a.ay : b.ax - a.ax;
+        if (pitch < a.size * 0.9 || pitch > a.size * 1.9) continue;
+        const [a0, a1, b0, b1] = horiz ? [a.x0, a.x1, b.x0, b.x1] : [a.y0, a.y1, b.y0, b.y1];
+        if (Math.min(Math.abs(a0 - b0), Math.abs(a1 - b1), Math.abs(a0 + a1 - b0 - b1) / 2) > a.size * 0.3) continue;
+        a.kind = "note";
+        b.kind = "note";
+      }
   }
 
   // ---- link annotations (OrCAD Capture): net-label links name their text exactly, part links wrap
@@ -569,7 +616,7 @@ export function analyzePage(
   const textGrid = new Grid(Math.max(4, S * 2));
   texts.forEach((t) => textGrid.add(t.id, t.x0 - t.size, t.y0 - t.size, t.x1 + t.size, t.y1 + t.size));
   /** vector-drawn glyphs sit on top of the (invisible) text layer, but font metrics differ slightly */
-  const insideText = (box: Box) => {
+  const insideText = (box: Box, line = false) => {
     const bw = box[2] - box[0];
     const bh = box[3] - box[1];
     const cx = (box[0] + box[2]) / 2;
@@ -579,10 +626,22 @@ export function analyzePage(
       const s = t.size;
       if (Math.max(bw, bh) > s * 1.6) continue;
       const m = 0.45 * s;
-      if (box[0] >= t.x0 - m && box[2] <= t.x1 + m && box[1] >= t.y0 - m && box[3] <= t.y1 + m) return true;
+      if (!(box[0] >= t.x0 - m && box[2] <= t.x1 + m && box[1] >= t.y0 - m && box[3] <= t.y1 + m)) continue;
+      // a straight line under the baseline, longer than any letter is wide, is what the text is written
+      // on (a pin line under its number, a wire stub under its label), not part of the lettering
+      if (line && Math.max(bw, bh) > s * 1.25) {
+        const horiz = t.rot === 0 || Math.abs(t.rot) === 180;
+        if (horiz ? bh < 0.02 && box[1] > t.ay + 0.05 * s : bw < 0.02 && (t.rot > 0 ? box[0] < t.ax - 0.05 * s : box[0] > t.ax + 0.05 * s)) continue;
+        // … and one running well past both ends of the text is no overbar of it either (a pin line by its number)
+        const along = horiz ? bh < 0.02 : bw < 0.02;
+        if (along && Math.max(bw, bh) > (horiz ? t.x1 - t.x0 : t.y1 - t.y0) * 1.15 + 0.2 * s) continue;
+      }
+      return id;
     }
-    return false;
+    return -1;
   };
+  /** per text: how many of its strokes were drawn in each pen colour */
+  const penTally = new Map<number, Map<string, number>>();
 
   // ---- primitives
   const strokeParts: string[] = [];
@@ -605,8 +664,43 @@ export function analyzePage(
         if (y > by1) by1 = y;
       }
       const box: Box = [bx0, by0, bx1, by1];
-      prims.push({ sp, op: raw.op, style, color, width: w, box, glyph: insideText(box) });
+      const under = insideText(box, sp.pts.length === 2 && sp.straight[0]);
+      if (under >= 0) {
+        // only strokes well inside the lettering vote for its pen (a pin line runs just under its name)
+        const t = texts[under];
+        const m = t.size * 0.12;
+        if (box[0] >= t.x0 - m && box[2] <= t.x1 + m && box[1] >= t.y0 - m && box[3] <= t.y1 + m) {
+          const tally = penTally.get(under) ?? penTally.set(under, new Map()).get(under)!;
+          tally.set(color, (tally.get(color) ?? 0) + 1);
+        }
+      }
+      prims.push({ sp, op: raw.op, style, color, width: w, box, glyph: under >= 0, under });
     }
+  }
+
+  // the pen each text was lettered with (pin numbers, labels, notes and part fields usually differ)
+  penTally.forEach((m, id) => {
+    // (a pin line end or a junction dot may poke into the box: the lettering pen is the clear majority)
+    const ranked = [...m].sort((a, b) => b[1] - a[1]);
+    if (ranked.length === 1 || ranked[0][1] >= ranked[1][1] * 2) texts[id].color = ranked[0][0];
+  });
+  // two words lettered with different pens are no sentence (a part reference right beside a pin number)
+  if (sentencePairs.length) {
+    const stays = new Set<number>();
+    for (const [a, b] of sentencePairs) {
+      const ca = texts[a].color, cb = texts[b].color;
+      if (ca && cb && ca !== cb) continue;
+      stays.add(a).add(b);
+    }
+    wasKind.forEach((kind, id) => {
+      if (!stays.has(id) && texts[id].kind === "note") texts[id].kind = kind;
+    });
+  }
+  // a stroke in another pen than the text it lies on is not part of that text (a pin line under its name)
+  for (const p of prims) {
+    if (!p.glyph) continue;
+    const pen = texts[p.under].color;
+    if (pen && pen !== p.color) p.glyph = false;
   }
 
   // styles mostly made of glyph strokes are text styles: their stray strokes are glyphs too
@@ -703,6 +797,8 @@ export function analyzePage(
     }
   }
   const colourMode = !!wireStyles;
+  /** the wiring pen (junction dots are filled with it) */
+  const wireColor0 = wireStyles ? stats.get([...wireStyles][0])!.color : null;
 
   // ---- geometry
   const wire: number[] = []; // x1,y1,x2,y2
@@ -717,6 +813,8 @@ export function analyzePage(
   /** port outlines found among the wiring (kept whole: stacked ports touch and must not glue together) */
   const portBoxes: Box[] = [];
 
+  /** colour drawings: everything drawn that is neither wiring nor lettering, i.e. the part symbols */
+  const symPrims: { box: Box; closed: boolean }[] = [];
   /** monochrome: straight strokes taken for lettering (a port's back edge right beside its label can be) */
   const glyphOrth: number[] = [];
   for (const p of prims) {
@@ -738,6 +836,8 @@ export function analyzePage(
     const bw = box[2] - box[0];
     const bh = box[3] - box[1];
     const isWireStyle = colourMode ? wireStyles!.has(p.style) : p.op !== "fill";
+    if (colourMode && !isWireStyle && Math.max(bw, bh) < pageDiag * 0.25 && !(wireColor0 && p.color === wireColor0 && p.op !== "stroke"))
+      symPrims.push({ box, closed: sp.closed });
     if (sp.closed && sp.straight.every(Boolean)) {
       const vs: Pt[] = [];
       for (const q of sp.pts) if (!vs.some((v) => Math.abs(v[0] - q[0]) < 0.05 && Math.abs(v[1] - q[1]) < 0.05)) vs.push(q);
@@ -790,6 +890,55 @@ export function analyzePage(
       }
       if (Math.hypot(x2 - x1, y2 - y1) < 0.05) continue;
       wire.push(x1, y1, x2, y2);
+    }
+  }
+
+  // colour drawings: a part outline drawn as four separate symbol lines (not one closed path) is a body too
+  if (colourMode && pinLines.length) {
+    const nL = pinLines.length / 4;
+    const tol = Math.max(0.1, S * 0.03);
+    const q = (v: number) => Math.round(v / tol);
+    const at = new Map<string, number[]>(); // corner → line * 2 + end
+    for (let l = 0; l < nL; l++)
+      for (const e of [0, 1]) {
+        const k = `${q(pinLines[4 * l + 2 * e])},${q(pinLines[4 * l + 2 * e + 1])}`;
+        (at.get(k) ?? at.set(k, []).get(k)!).push(l * 2 + e);
+      }
+    const horiz = (l: number) => Math.abs(pinLines[4 * l + 1] - pinLines[4 * l + 3]) < 0.02;
+    /** lines of the other direction starting where line l's end e is, with their far corner */
+    const turn = (l: number, e: number) => {
+      const x = pinLines[4 * l + 2 * e], y = pinLines[4 * l + 2 * e + 1];
+      const out: { l: number; e: number }[] = [];
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++)
+          for (const v of at.get(`${q(x) + dx},${q(y) + dy}`) ?? []) {
+            const o = v >> 1;
+            if (o === l || horiz(o) === horiz(l)) continue;
+            if (Math.hypot(pinLines[4 * o + 2 * (v & 1)] - x, pinLines[4 * o + 2 * (v & 1) + 1] - y) <= tol * 1.5) out.push({ l: o, e: 1 - (v & 1) });
+          }
+      return out;
+    };
+    const used = new Set<number>();
+    for (let l = 0; l < nL; l++) {
+      if (!horiz(l) || used.has(l)) continue;
+      const x0 = pinLines[4 * l], y0 = pinLines[4 * l + 1];
+      search: for (const b of turn(l, 1))
+        for (const c of turn(b.l, b.e))
+          for (const d of turn(c.l, c.e)) {
+            if (d.l === b.l || c.l === l) continue;
+            if (Math.hypot(pinLines[4 * d.l + 2 * d.e] - x0, pinLines[4 * d.l + 2 * d.e + 1] - y0) > tol * 1.5) continue;
+            const xs = [x0, pinLines[4 * l + 2]], ys = [y0, pinLines[4 * c.l + 1]];
+            bodies.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]);
+            used.add(l).add(b.l).add(c.l).add(d.l);
+            break search;
+          }
+    }
+    // outline edges are not pins
+    if (used.size) {
+      const kept: number[] = [];
+      for (let l = 0; l < nL; l++) if (!used.has(l)) kept.push(pinLines[4 * l], pinLines[4 * l + 1], pinLines[4 * l + 2], pinLines[4 * l + 3]);
+      pinLines.length = 0;
+      pinLines.push(...kept);
     }
   }
 
@@ -1196,12 +1345,18 @@ export function analyzePage(
     const cx = (t.x0 + t.x1) / 2;
     const cy = (t.y0 + t.y1) / 2;
     if (t.inBody) continue; // a part link already said so
-    t.inBody = bodyGrid.query(cx, cy, cx, cy).some((i) => {
+    let best = -1, bestA = Infinity;
+    for (const i of bodyGrid.query(cx, cy, cx, cy)) {
       const b = bigBodies[i];
+      const area = (b[2] - b[0]) * (b[3] - b[1]);
       // the whole sheet frame / title block is not a part body
-      if ((b[2] - b[0]) * (b[3] - b[1]) > width * height * 0.25) return false;
-      return cx > b[0] && cx < b[2] && cy > b[1] && cy < b[3];
-    });
+      if (area > width * height * 0.25) continue;
+      if (cx > b[0] && cx < b[2] && cy > b[1] && cy < b[3] && area < bestA) {
+        bestA = area;
+        best = i;
+      }
+    }
+    t.inBody = best >= 0;
   }
   // small closed outlines wrapping exactly one label (net flags)
   const flagOf = new Map<number, Box>();
@@ -1291,6 +1446,33 @@ export function analyzePage(
     }
     return cover;
   };
+  /** a symbol (pin) line ends right at the text and points at its middle: the name of that pin, written inside the part */
+  const pinEndInLine = (t: SchText) => {
+    const horiz = t.rot === 0 || Math.abs(t.rot) === 180;
+    const s = t.size;
+    // across the lettering: the pin meets the middle of the name, a wire would run under its baseline
+    const lo = (horiz ? t.y0 : t.x0) + 0.15 * s, hi = (horiz ? t.y1 : t.x1) - 0.15 * s;
+    const a0 = horiz ? t.x0 : t.y0, a1 = horiz ? t.x1 : t.y1;
+    for (const i of pinGrid.query(t.x0 - 1.2 * s, t.y0 - 1.2 * s, t.x1 + 1.2 * s, t.y1 + 1.2 * s)) {
+      const x1 = pinLines[4 * i], y1 = pinLines[4 * i + 1], x2 = pinLines[4 * i + 2], y2 = pinLines[4 * i + 3];
+      if (horiz ? Math.abs(y1 - y2) > 0.02 : Math.abs(x1 - x2) > 0.02) continue;
+      const across = horiz ? y1 : x1;
+      if (across < lo || across > hi) continue;
+      const p0 = Math.min(horiz ? x1 : y1, horiz ? x2 : y2), p1 = Math.max(horiz ? x1 : y1, horiz ? x2 : y2);
+      // the line stops short of the name on one side (it does not run through it)
+      const gap = p1 <= a0 + 0.2 * s ? a0 - p1 : p0 >= a1 - 0.2 * s ? p0 - a1 : Infinity;
+      if (gap <= 1.1 * s) return true;
+    }
+    return false;
+  };
+  /** lettering pens told apart by what they write (filled in once labels have been tied to wires) */
+  const notePens = new Set<string>();
+  const symbolPens = new Set<string>();
+  const labelPens = new Set<string>();
+  /** the pen that writes pin numbers: other words in it are pin numbers too (A1, CD1), or flagged global labels */
+  const pinPens = new Set<string>();
+  /** written along a pin line, or inside a part at the end of one (beside a wire it could be a sideways power symbol) */
+  const isPinName = (t: SchText) => colourMode && (pinUnder(t) > 0.5 || (t.inBody && pinEndInLine(t)));
   /** wire running along the label's baseline (net labels sit on their wire in every CAD tool) */
   const alongSeg = (t: SchText) => {
     const r = (t.rot * Math.PI) / 180;
@@ -1326,7 +1508,7 @@ export function analyzePage(
   };
   const endTouch = Math.max(0.4, S * 0.15);
   /** wire end inside / at the edge of a box (power pins and port tips connect to wire ends) */
-  const wireEndAt = (b: Box, m: number, ref?: Pt) => {
+  const wireEndAt = (b: Box, m: number, ref?: Pt, onAxisOf?: SchText) => {
     let best = -1;
     let bd = Infinity;
     // rank by the label's own position when given: two touching power arrows glue into one symbol
@@ -1338,7 +1520,13 @@ export function analyzePage(
         if (!inB(x, y)) continue;
         // a stroke of the symbol itself, not a wire leaving it
         if (inB(wire[4 * o + 2 * (1 - e)], wire[4 * o + 2 * (1 - e) + 1])) continue;
-        const d = Math.hypot(x - cx, y - cy);
+        let d = Math.hypot(x - cx, y - cy);
+        // two power arrows that touch are one symbol here: each name goes with the wire it stands in line with
+        if (onAxisOf) {
+          const vert = Math.abs(wire[4 * o] - wire[4 * o + 2]) < 0.02;
+          const mm = onAxisOf.size * 0.3;
+          if (vert ? x < onAxisOf.x0 - mm || x > onAxisOf.x1 + mm : y < onAxisOf.y0 - mm || y > onAxisOf.y1 + mm) d += 1e6;
+        }
         if (d < bd) {
           bd = d;
           best = o;
@@ -1346,21 +1534,30 @@ export function analyzePage(
       }
     return best;
   };
-  for (const t of texts) {
+  const attachLabels = () => {
+   labelAttach.length = 0;
+   for (const t of texts) {
+    t.via = undefined;
     if (t.kind !== "net" || t.inBody) continue;
-    // a name written along a pin line belongs to the pin
-    if (colourMode && pinUnder(t) > 0.5) continue;
+    // a name written along a pin line, or at the end of one, belongs to the pin
+    if (isPinName(t)) continue;
+    // lettered with the pen used for part fields: only a power symbol can make it a net name
+    const fieldPen = !!t.color && symbolPens.has(t.color);
+    const pinPen = !!t.color && pinPens.has(t.color);
     // "16V" next to a capacitor is a rating; as a net name it comes with a power symbol
     const bareVolt = /^\d+(?:[.,]\d+)?V\d*$/i.test(t.str);
     // 1) the label sits on its wire
-    const a = bareVolt ? -1 : alongSeg(t);
+    // (in the field pen that is a power name over the stub of its sideways symbol: only when no symbol claims it,
+    // because a ground name may just as well stand beside its arrow with a foreign wire passing under it)
+    const powerStub = fieldPen && POWER.test(t.str) && !bareVolt;
+    const a = bareVolt || fieldPen || pinPen ? -1 : alongSeg(t);
     if (a >= 0) {
       labelAttach.push({ text: t.id, seg: a, port: true });
       t.via = "along";
       continue;
     }
     // 2) global-label / off-sheet flag outline around the text, touching a wire end
-    const flag = flagOf.get(t.id);
+    const flag = fieldPen ? undefined : flagOf.get(t.id);
     if (flag) {
       const { best, bestD } = nearestSeg(flag, endTouch);
       if (best >= 0 && bestD <= endTouch) {
@@ -1369,6 +1566,7 @@ export function analyzePage(
         continue;
       }
     }
+    if (pinPen) continue;
     // 3) power symbol / port arrow between the text and a wire end
     const g = t.size * 1.6;
     const tcx = (t.x0 + t.x1) / 2, tcy = (t.y0 + t.y1) / 2;
@@ -1389,7 +1587,9 @@ export function analyzePage(
         }
         const ox = overlap(b[0], b[2], t.x0, t.x1);
         const oy = overlap(b[1], b[3], t.y0, t.y1);
-        if (ox < 0.5 && oy < 0.5) return false;
+        // (a sideways power name stands on its stem line: only its lower part is level with the arrow)
+        const need = colourMode && POWER.test(t.str) ? 0.35 : 0.5;
+        if (ox < need && oy < need) return false;
         // the symbol must not wrap another label
         return !textGrid.query(b[0], b[1], b[2], b[3]).some((id) => {
           if (id === t.id) return false;
@@ -1407,7 +1607,7 @@ export function analyzePage(
     let hit = -1;
     for (const b of own.slice(0, 3)) {
       // a port's lead can stop short of the outline (its stub was taken for a pin number)
-      const o = wireEndAt(b, portSet.has(b) ? Math.max(endTouch, S * 0.4) : endTouch, linkLabel.has(t.id) ? [tcx, tcy] : undefined);
+      const o = wireEndAt(b, portSet.has(b) ? Math.max(endTouch, S * 0.4) : endTouch, linkLabel.has(t.id) ? [tcx, tcy] : undefined, colourMode ? t : undefined);
       if (o < 0) continue;
       // the wire must leave the symbol on the side away from the text
       const scx = (b[0] + b[2]) / 2, scy = (b[1] + b[3]) / 2;
@@ -1419,12 +1619,29 @@ export function analyzePage(
       const throughStem = linkLabel.has(t.id) && Math.max(e0, e1) > toSym + 0.1 && distPtSeg(tcx, tcy, wire[4 * o], wire[4 * o + 1], wire[4 * o + 2], wire[4 * o + 3]) <= Math.hypot(t.x1 - t.x0, t.y1 - t.y0) / 2 + toSym;
       const inLine = throughStem && (Math.abs(wire[4 * o] - wire[4 * o + 2]) < 0.02 ? Math.abs(wire[4 * o] - tcx) : Math.abs(wire[4 * o + 1] - tcy)) < t.size * 0.6;
       if (Math.min(e0, e1) + 0.1 < toSym && !inLine) continue;
+      // a part's own reference / value sits beside its symbol just like a power name does, but only the
+      // power name stands on the axis of the wire that ends there
+      if (fieldPen && !POWER.test(t.str)) {
+        const near = e0 <= e1 ? 0 : 2;
+        const wx = wire[4 * o + near], wy = wire[4 * o + near + 1];
+        const vert = Math.abs(wire[4 * o] - wire[4 * o + 2]) < 0.02;
+        // (a power name is centred on its pin; a long part number merely happens to span some wire)
+        if (vert ? Math.abs(wx - tcx) > t.size * 0.6 + (t.x1 - t.x0) * 0.1 : wy < t.y0 - t.size * 0.5 || wy > t.y1 + t.size * 0.5) continue;
+      }
       hit = o;
       break;
     }
     if (hit >= 0) {
       labelAttach.push({ text: t.id, seg: hit, port: true });
       t.via = "symbol";
+      continue;
+    }
+    if (powerStub) {
+      const stub = alongSeg(t);
+      if (stub >= 0) {
+        labelAttach.push({ text: t.id, seg: stub, port: true });
+        t.via = "along";
+      }
       continue;
     }
     // 4) monochrome drawings: a name written right at a wire end (pin-side alias)
@@ -1435,6 +1652,62 @@ export function analyzePage(
         labelAttach.push({ text: t.id, seg: best, port: false });
         t.via = "near";
       }
+    }
+   }
+  };
+  attachLabels();
+
+  // ---- lettering pens. Drawings that letter in strokes use one pen per kind of text (KiCad: notes,
+  // labels and part fields each have their own colour). Learn which pen is which from the texts that
+  // are certain, then let the pen settle the doubtful ones: a heading word lying on a wire is not a
+  // label, a pin name beside a wire is not one either, and "SW1" in the label pen is a net, not a part.
+  if (colourMode) {
+    interface PenStat { n: number; lab: number; flag: number; ref: number; note: number; num: number }
+    const pens = new Map<string, PenStat>();
+    const pen = (c: string) => pens.get(c) ?? pens.set(c, { n: 0, lab: 0, flag: 0, ref: 0, note: 0, num: 0 }).get(c)!;
+    for (const t of texts) {
+      if (!t.color) continue;
+      pen(t.color).n++;
+      if (t.kind === "pin") pen(t.color).num++;
+      else if (t.kind === "component" && !t.inBody) {
+        pen(t.color).ref++;
+      } else if (t.kind === "note") pen(t.color).note++;
+    }
+    for (const a of labelAttach) {
+      const t = texts[a.text];
+      if (t.color && t.via !== "symbol" && t.via !== "ground") pen(t.color).lab++;
+      if (t.color && t.via === "flag") pen(t.color).flag++;
+    }
+    let topLab = 0;
+    pens.forEach((st, c) => {
+      if (st.lab >= 4 && st.ref <= st.lab * 0.1 && st.note <= st.lab * 0.1) {
+        labelPens.add(c);
+        topLab = Math.max(topLab, st.lab);
+      }
+    });
+    if (labelPens.size) {
+      pens.forEach((st, c) => {
+        if (labelPens.has(c) || st.lab * 3 > topLab) return;
+        if (st.ref >= 6 && st.lab * 5 <= st.ref && st.ref >= st.note) symbolPens.add(c);
+        // (the pen that writes pin numbers also letters the sheet frame: not a note pen)
+        else if (st.n >= 10 && st.num >= st.n * 0.5) pinPens.add(c);
+        // (global labels in their outlines share a pen with the sheet frame lettering: not a note pen)
+        else if (st.note >= 4 && st.ref * 3 <= st.note && st.lab * 2 <= st.note && !st.flag) notePens.add(c);
+      });
+      let changed = symbolPens.size + pinPens.size > 0;
+      for (const t of texts) {
+        if (!t.color || linkLabel.has(t.id)) continue;
+        if (notePens.has(t.color)) {
+          if (t.kind !== "note" && t.kind !== "pin") {
+            t.kind = "note";
+            changed = true;
+          }
+        } else if (t.kind === "component" && labelPens.has(t.color)) {
+          t.kind = "net";
+          changed = true;
+        } else if ((t.kind === "component" || t.kind === "value") && pinPens.has(t.color)) t.kind = "pin"; // CD1, 2.1
+      }
+      if (changed) attachLabels();
     }
   }
 
@@ -1682,14 +1955,37 @@ export function analyzePage(
   }
 
   // ---- components (reference designators) with their nearby value text
-  // loose references (PWRLED1, MICRO_SD1) count only when they don't name a wire and sit next to a value
+  // names that look like references but are pin names: written along a pin line, at the end of one
+  // inside a part (XTAL2), or several of them inside one outline (J1 … J8 of a connector module)
+  if (colourMode) {
+    const times = new Map<string, number>();
+    for (const t of texts) if (t.kind === "component") times.set(t.str, (times.get(t.str) ?? 0) + 1);
+    for (const t of texts) {
+      if (t.kind !== "component" || linkLabel.has(t.id)) continue;
+      // (a capacitor's reference may be turned along its lead: a pin name shows up on every such part)
+      if ((t.inBody && pinEndInLine(t)) || (pinUnder(t) > 0.5 && (times.get(t.str) ?? 0) >= 2)) t.kind = "pin";
+    }
+  }
+  // a sheet numbers its parts in one style: the odd "DW02R" among a hundred "R12" is a part number
+  {
+    const std = new RegExp(`^\\*?(?:${STD_PREFIX})\\d{1,4}[A-Z]?$`);
+    const refs = texts.filter((t) => t.kind === "component" && !t.inBody && !linkLabel.has(t.id));
+    const odd = refs.filter((t) => !std.test(t.str) && !CONNECTOR_REF.test(t.str) && !t.str.startsWith("*"));
+    if (odd.length && odd.length * 12 <= refs.length) for (const t of odd) t.kind = "value";
+  }
+  // loose references (PWRLED1, MICRO_SD1) count only when they don't name a wire and sit next to a value,
+  // or are lettered with the pen of the part fields and are no pin name
   for (const t of texts) {
     if (t.kind !== "net" || t.net >= 0 || t.inBody || linkLabel.has(t.id) || !LOOSE_REF.test(t.str) || POWER.test(t.str)) continue;
     const s = t.size;
     const hasValue = textGrid
       .query(t.x0 - 3 * s, t.y0 - 2.5 * s, t.x1 + 3 * s, t.y1 + 2.5 * s)
       .some((id) => texts[id].kind === "value" && Math.abs(texts[id].size - s) < s * 0.35);
-    if (hasValue) t.kind = "component";
+    // (the pin-number pen writes alphanumeric pin numbers: CD1, A12)
+    if (t.color && pinPens.has(t.color)) continue;
+    if (colourMode && pinUnder(t) > 0.5) continue;
+    const fieldPen = !!t.color && symbolPens.has(t.color) && !pinEndInLine(t);
+    if (hasValue || fieldPen) t.kind = "component";
   }
   // Altium part markers name the references exactly
   if (markerRefs.length) {
@@ -1710,28 +2006,261 @@ export function analyzePage(
     const b = gateBase(t.str.replace(/^\*/, ""));
     if (b) refCount.set(b, (refCount.get(b) ?? 0) + 1);
   }
-  const compMap = new Map<string, SchComponent>();
-  for (const t of texts) {
-    if (t.kind !== "component") continue;
+  // Each part takes the value written closest to its reference, and a value belongs to one part only.
+  const refTexts = texts.filter((t) => t.kind === "component");
+  /** the part a reference text stands for (gates U5A / U5B are one part) */
+  const partOf = new Map<number, string>();
+  for (const t of refTexts) {
     let ref = t.str.replace(/^\*/, "");
     const b = gateBase(ref);
     if (b && ((refCount.get(b) ?? 0) > 1 || texts.some((o) => o.str === b))) ref = b;
+    partOf.set(t.id, ref);
+  }
+  const valueOf = new Map<string, SchText>();
+  /** value texts already given to a part */
+  const claimed = new Set<number>();
+  {
+    const gap = (a: SchText, b: SchText) => Math.hypot(Math.max(b.x0 - a.x1, 0, a.x0 - b.x1), Math.max(b.y0 - a.y1, 0, a.y0 - b.y1));
+    // colour drawings: strokes that touch form one part symbol, and a reference and its value are both
+    // written beside the same symbol (in a row of capacitors the neighbour's value may be the nearer one)
+    const home = new Map<number, number>();
+    /** a symbol stroke lies in the gap between two texts written on one line */
+    let symbolBetween: (a: SchText, b: SchText) => boolean = () => false;
+    if (colourMode && symPrims.length) {
+      // (frames and note boxes have wiring running through them: they are not symbols)
+      const parts = symPrims.filter((q) => !(q.closed && isBig(q.box) && wiresInside(q.box) >= 2));
+      const pg = new Grid(Math.max(4, S * 2));
+      parts.forEach((q, i) => pg.add(i, q.box[0], q.box[1], q.box[2], q.box[3]));
+      const pd = new DSU(parts.length);
+      const m = Math.max(0.1, S * 0.03);
+      parts.forEach((q, i) => {
+        for (const j of pg.query(q.box[0] - m, q.box[1] - m, q.box[2] + m, q.box[3] + m)) {
+          if (j <= i) continue;
+          const o = parts[j].box;
+          if (o[0] <= q.box[2] + m && o[2] >= q.box[0] - m && o[1] <= q.box[3] + m && o[3] >= q.box[1] - m) pd.union(i, j);
+        }
+      });
+      symbolBetween = (a, b) => {
+        const x0 = Math.min(a.x1, b.x1), x1 = Math.max(a.x0, b.x0), y0 = Math.min(a.y1, b.y1), y1 = Math.max(a.y0, b.y0);
+        // the strip between the two boxes (they overlap across it)
+        const strip: Box = x1 > x0 ? [x0, Math.max(a.y0, b.y0), x1, Math.min(a.y1, b.y1)] : [Math.max(a.x0, b.x0), y0, Math.min(a.x1, b.x1), y1];
+        if (strip[2] <= strip[0] || strip[3] <= strip[1]) return false;
+        return pg.query(strip[0], strip[1], strip[2], strip[3]).some((j) => {
+          const o = parts[j].box;
+          return o[0] < strip[2] && o[2] > strip[0] && o[1] < strip[3] && o[3] > strip[1];
+        });
+      };
+      const reach = 4 * S;
+      for (const t of texts) {
+        if (t.kind === "pin" || t.kind === "note") continue;
+        let best = -1, bd = reach;
+        for (const j of pg.query(t.x0 - reach, t.y0 - reach, t.x1 + reach, t.y1 + reach)) {
+          const o = parts[j].box;
+          const d = Math.hypot(Math.max(o[0] - t.x1, 0, t.x0 - o[2]), Math.max(o[1] - t.y1, 0, t.y0 - o[3]));
+          if (d < bd) {
+            bd = d;
+            best = j;
+          }
+        }
+        if (best >= 0) home.set(t.id, pd.find(best));
+      }
+    }
+    // stroke-lettered drawings: part fields share one pen, and words in it that name no wire are values too ("Opened")
+    const isField = (o: SchText) => !!o.color && symbolPens.has(o.color);
+    const usable = (o: SchText, t: SchText) => {
+      if (o.inBody && !t.inBody) return false;
+      if (t.color && o.color && o.color !== t.color) return false;
+      if (o.kind === "value") return !(colourMode && pinUnder(o) > 0.5);
+      return o.kind === "net" && o.net < 0 && isField(o) && !POWER.test(o.str) && pinUnder(o) <= 0.5 && !pinEndInLine(o);
+    };
+    const pairs: { part: string; t: SchText; o: SchText; g: number; d: number; off: string }[] = [];
+    /** how many parts of a kind have a candidate at the very same offset (fields of copied parts sit alike) */
+    const offsetUse = new Map<string, Set<string>>();
+    for (const t of refTexts) {
+      const part = partOf.get(t.id)!;
+      const R = 6 * Math.max(S, t.size);
+      for (const id of textGrid.query(t.x0 - R, t.y0 - R, t.x1 + R, t.y1 + R)) {
+        const o = texts[id];
+        if (o === t || !usable(o, t)) continue;
+        const g = gap(t, o);
+        // beyond arm's length only a value set squarely above / below (or beside) its reference counts
+        const cx = Math.abs(t.x0 + t.x1 - o.x0 - o.x1) / 2, cy = Math.abs(t.y0 + t.y1 - o.y0 - o.y1) / 2;
+        const lined = Math.min(cx, cy, Math.abs(t.x0 - o.x0), Math.abs(t.y1 - o.y1)) <= t.size * 0.6;
+        if (g > R || (g > 3.2 * Math.max(S, t.size) && !lined)) continue;
+        const sameSymbol = home.has(t.id) && home.get(t.id) === home.get(o.id);
+        // plain words are a last resort; turned differently from the reference is less likely
+        let d = g + (o.kind === "value" ? 0 : 1.5 * S) + (o.rot === t.rot ? 0 : 0.8 * S) + (home.size && !sameSymbol ? 3 * S : 0);
+        // written on one line with the reference (symbol in between): R25 ▭ 10k
+        const horiz = t.rot === 0 || Math.abs(t.rot) === 180;
+        if (o.rot === t.rot && Math.abs(horiz ? o.ay - t.ay : o.ax - t.ax) <= t.size * 0.25) {
+          // … with the symbol between the two, that is how a part is lettered
+          if (symbolBetween(t, o)) d = Math.min(d, g * 0.1);
+          else d -= 1.5 * S;
+        }
+        const off = `${/^\*?[A-Z]*/i.exec(part)![0]}|${t.rot}|${o.rot}|${Math.round(o.ax - t.ax)}|${Math.round(o.ay - t.ay)}`;
+        (offsetUse.get(off) ?? offsetUse.set(off, new Set()).get(off)!).add(part);
+        pairs.push({ part, t, o, g, d, off });
+      }
+    }
+    for (const q of pairs) {
+      if ((offsetUse.get(q.off)?.size ?? 0) >= 2) q.d -= 1.5 * S;
+      q.d = Math.max(q.d, q.g * 0.05);
+    }
+    // In a tight row every reference stands right beside its neighbour's value: taking the nearest pair
+    // first would shift the whole row by one. So each group of candidates is settled together, at the
+    // smallest total distance, and leaving a part without a value costs more than any distance.
+    const taken = claimed;
+    const settle = (part: string, o: SchText) => {
+      valueOf.set(part, o);
+      taken.add(o.id);
+      if (o.kind === "net") o.kind = "value";
+    };
+    {
+      const node = new Map<string, number>();
+      const idOf = (k: string) => node.get(k) ?? node.set(k, node.size).get(k)!;
+      for (const q of pairs) {
+        idOf("p" + q.part);
+        idOf("v" + q.o.id);
+      }
+      const gd = new DSU(node.size);
+      for (const q of pairs) gd.union(idOf("p" + q.part), idOf("v" + q.o.id));
+      const groups = new Map<number, typeof pairs>();
+      for (const q of pairs) {
+        const r = gd.find(idOf("p" + q.part));
+        (groups.get(r) ?? groups.set(r, []).get(r)!).push(q);
+      }
+      const alone = 9 * S;
+      for (const group of groups.values()) {
+        const rows = [...new Set(group.map((q) => q.part))];
+        const cols = [...new Set(group.map((q) => q.o))];
+        if (rows.length === 1 || cols.length === 1 || rows.length > 300) {
+          // nothing to weigh up (or too many to): nearest first
+          group.sort((a, b) => a.d - b.d);
+          for (const q of group) if (!valueOf.has(q.part) && !taken.has(q.o.id)) settle(q.part, q.o);
+          continue;
+        }
+        const ri = new Map(rows.map((k, i) => [k, i]));
+        const ci = new Map(cols.map((o, i) => [o.id, i]));
+        // cost[row][col]; columns past the values mean "no value"
+        const n = rows.length, m = cols.length + rows.length;
+        const cost = rows.map(() => new Float64Array(m).fill(1e9));
+        for (let i = 0; i < n; i++) for (let j = cols.length; j < m; j++) cost[i][j] = alone;
+        for (const q of group) {
+          const i = ri.get(q.part)!, j = ci.get(q.o.id)!;
+          if (q.d < cost[i][j]) cost[i][j] = q.d;
+        }
+        // assignment by shortest augmenting paths (rows ≤ columns)
+        const u = new Float64Array(n + 1), v = new Float64Array(m + 1);
+        const match = new Int32Array(m + 1), way = new Int32Array(m + 1);
+        for (let i = 1; i <= n; i++) {
+          match[0] = i;
+          let j0 = 0;
+          const minv = new Float64Array(m + 1).fill(Infinity);
+          const used = new Uint8Array(m + 1);
+          do {
+            used[j0] = 1;
+            const i0 = match[j0];
+            let delta = Infinity, j1 = 0;
+            for (let j = 1; j <= m; j++) {
+              if (used[j]) continue;
+              const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+              if (cur < minv[j]) {
+                minv[j] = cur;
+                way[j] = j0;
+              }
+              if (minv[j] < delta) {
+                delta = minv[j];
+                j1 = j;
+              }
+            }
+            for (let j = 0; j <= m; j++) {
+              if (used[j]) {
+                u[match[j]] += delta;
+                v[j] -= delta;
+              } else minv[j] -= delta;
+            }
+            j0 = j1;
+          } while (match[j0] !== 0);
+          do {
+            const j1 = way[j0];
+            match[j0] = match[j1];
+            j0 = j1;
+          } while (j0);
+        }
+        for (let j = 1; j <= cols.length; j++) if (match[j] && cost[match[j] - 1][j - 1] < 1e8) settle(rows[match[j] - 1], cols[j - 1]);
+      }
+    }
+    const pending = () => refTexts.filter((t) => !valueOf.has(partOf.get(t.id)!));
+    // a large part has its reference above and its value below the body, further apart than any row
+    // spacing: what ties them is the symbol both are written against
+    if (home.size) {
+      const free = texts.filter((o) => home.has(o.id) && o.kind === "value");
+      for (const t of pending()) {
+        if (valueOf.has(partOf.get(t.id)!) || !home.has(t.id)) continue;
+        let best: SchText | null = null, bd = 100 * S;
+        for (const o of free) {
+          if (taken.has(o.id) || home.get(o.id) !== home.get(t.id) || !usable(o, t)) continue;
+          const g = gap(t, o);
+          if (g < bd) {
+            bd = g;
+            best = o;
+          }
+        }
+        if (best) settle(partOf.get(t.id)!, best);
+      }
+    }
+    // what is left over: a value nobody claimed and a part without one, each the other's nearest
+    {
+      const left = pending();
+      const free = texts.filter((o) => o.kind === "value" && !taken.has(o.id));
+      const R = 12 * S;
+      const nearest = <T extends SchText>(a: SchText, list: T[], ok: (b: T) => boolean) => {
+        let best: T | null = null, bd = R;
+        for (const b of list) {
+          if (!ok(b)) continue;
+          const g = gap(a, b);
+          if (g < bd) {
+            bd = g;
+            best = b;
+          }
+        }
+        return best;
+      };
+      for (const t of left) {
+        const part = partOf.get(t.id)!;
+        if (valueOf.has(part)) continue;
+        const o = nearest(t, free, (b) => !taken.has(b.id) && usable(b, t));
+        if (o && nearest(o, left, (b) => !valueOf.has(partOf.get(b.id)!) && usable(o, b)) === t) settle(part, o);
+      }
+    }
+  }
+  const compMap = new Map<string, SchComponent>();
+  for (const t of refTexts) {
+    const ref = partOf.get(t.id)!;
     let c = compMap.get(ref);
     if (!c) {
       c = { ref, textIds: [], values: [] };
       compMap.set(ref, c);
+      const v = valueOf.get(ref);
+      if (v) c.values.push(v.str);
     }
     c.textIds.push(t.id);
-    const s = t.size;
-    const near = textGrid
-      .query(t.x0 - 4 * s, t.y0 - 3 * s, t.x1 + 4 * s, t.y1 + 3 * s)
-      .map((id) => texts[id])
-      .filter((o) => o.kind === "value" && o.rot === t.rot)
-      .map((o) => ({ o, d: Math.hypot((o.x0 + o.x1) / 2 - (t.x0 + t.x1) / 2, (o.y0 + o.y1) / 2 - (t.y0 + t.y1) / 2) }))
-      .filter((x) => x.d < s * 3.2)
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 2);
-    for (const { o } of near) if (!c.values.includes(o.str)) c.values.push(o.str);
+    // other tools print a second field beside the value (package, rating): keep the nearest one nobody
+    // claimed. Where the part fields have a pen of their own (KiCad) a part shows exactly one value.
+    if (!symbolPens.size && c.values.length === 1) {
+      const s = t.size;
+      const extra = textGrid
+        .query(t.x0 - 4 * s, t.y0 - 3 * s, t.x1 + 4 * s, t.y1 + 3 * s)
+        .map((id) => texts[id])
+        .filter((o) => o.kind === "value" && o.rot === t.rot && !claimed.has(o.id) && !c!.values.includes(o.str))
+        .map((o) => ({ o, d: Math.hypot((o.x0 + o.x1) / 2 - (t.x0 + t.x1) / 2, (o.y0 + o.y1) / 2 - (t.y0 + t.y1) / 2) }))
+        .filter((x) => x.d < s * 3.2)
+        .sort((a, b) => a.d - b.d)[0];
+      if (extra) {
+        c.values.push(extra.o.str);
+        claimed.add(extra.o.id);
+      }
+    }
   }
   // part links know the value exactly (and stand in for references drawn as strokes)
   for (const p of partLinks) {
@@ -1758,6 +2287,7 @@ export function analyzePage(
     vectorText: glyphCount > texts.length * 0.8,
     wireStyle: wireStyleName,
     textSize: S,
+    pens: labelPens.size ? { label: [...labelPens], field: [...symbolPens], note: [...notePens] } : undefined,
     components: [...compMap.values()].sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true })),
   };
 }
