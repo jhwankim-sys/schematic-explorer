@@ -102,7 +102,7 @@ export function TabStrip<T extends string>({
               document.getElementById(`${idPrefix}-tab-${n.value}`)?.focus();
             }}
             className={cn(
-              "inline-flex items-center justify-center gap-1.5 rounded-sm px-2 py-1 text-sm font-medium [&_svg]:size-4",
+              "inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-2 py-1 text-sm font-medium [&_svg]:size-4",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}

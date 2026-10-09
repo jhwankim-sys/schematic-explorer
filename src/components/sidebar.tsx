@@ -1,6 +1,6 @@
 import { useT } from "../i18n.tsx";
 import { useMemo, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, Cpu, Download, Search, Waypoints, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronUp, Cpu, Download, Search, Waypoints, X } from "lucide-react";
 import { Button, cn, Input, TabStrip } from "./ui.tsx";
 import { rankFilter, type CompEntry, type NetEntry } from "../lib/schematic/model.ts";
 
@@ -15,6 +15,8 @@ interface Props {
   nets: NetEntry[];
   comps: CompEntry[];
   unnamedCount: number;
+  /** the PDF has no text layer (lettering drawn as strokes): names cannot be read */
+  noText?: boolean;
   selectedNet: string | null;
   selectedComp: string | null;
   onPickNet: (e: NetEntry) => void;
@@ -25,9 +27,17 @@ interface Props {
   detail: ReactNode;
   /** one-line summary of the selection for the collapsed sheet on small screens */
   selectionSummary: { title: string; sub?: string } | null;
-  /** small screens: the panel is a sheet under the drawing that opens and closes */
+  /** "side": a panel left of the drawing (wide screens, phones held sideways); "sheet": a sheet under it */
+  layout: "side" | "sheet";
+  /** short landscape screens: a narrower side panel */
+  compact?: boolean;
+  /** sheet: whether it is open; side: whether the panel is shown */
   sheetOpen: boolean;
   onSheetOpen: (open: boolean) => void;
+  /** side layout: fold the panel away */
+  onCollapse?: () => void;
+  /** extra controls on the sheet handle (stepping through a net's labels) */
+  handleExtra?: ReactNode;
 }
 
 export function SchematicSidebar({
@@ -39,6 +49,7 @@ export function SchematicSidebar({
   nets,
   comps,
   unnamedCount,
+  noText,
   selectedNet,
   selectedComp,
   onPickNet,
@@ -46,9 +57,14 @@ export function SchematicSidebar({
   onExport,
   detail,
   selectionSummary,
+  layout,
+  compact,
   sheetOpen,
   onSheetOpen,
+  onCollapse,
+  handleExtra,
 }: Props) {
+  const sheet = layout === "sheet";
   const t = useT();
   const q = query.trim().toUpperCase();
   // exact matches come first so "R1" is not buried under R10…R19
@@ -61,42 +77,49 @@ export function SchematicSidebar({
     <aside
       aria-label={t("노드와 부품 목록")}
       className={cn(
-        "flex min-h-0 w-full shrink-0 flex-col border-t border-border bg-card md:h-auto md:w-72 md:border-r md:border-t-0",
-        sheetOpen && "max-md:h-[62dvh]",
+        "flex min-h-0 shrink-0 flex-col border-border bg-card",
+        compact && "side-compact",
+        sheet ? "w-full border-t" : cn("h-auto border-r", compact ? "w-56" : "w-72"),
+        sheet && sheetOpen && "h-[46dvh]",
       )}
     >
-      {/* small screens: a handle that opens the lists; the drawing keeps the rest of the screen */}
-      <button
-        type="button"
-        aria-expanded={sheetOpen}
-        aria-controls="side-body"
-        onClick={() => onSheetOpen(!sheetOpen)}
-        className="flex min-h-12 w-full shrink-0 items-center gap-3 px-4 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:hidden"
-      >
-        {selectionSummary && !sheetOpen ? (
-          <>
-            <span aria-hidden="true" className="selection-dot size-2.5 shrink-0 rounded-full" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-mono font-semibold">{selectionSummary.title}</span>
-              {selectionSummary.sub && <span className="block truncate text-xs text-muted-foreground">{selectionSummary.sub}</span>}
-            </span>
-          </>
-        ) : (
-          <>
-            <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate text-muted-foreground">
-              {t(`노드 ${nets.length} · 부품 ${comps.length}`, `${nets.length} nets · ${comps.length} parts`)}
-            </span>
-          </>
-        )}
-        <span className="sr-only">{t(sheetOpen ? "목록 닫기" : "목록 열기")}</span>
-        {sheetOpen ? <ChevronDown className="size-4 shrink-0" aria-hidden="true" /> : <ChevronUp className="size-4 shrink-0" aria-hidden="true" />}
-      </button>
+      {/* sheet: a slim handle that opens the lists; the drawing keeps the rest of the screen */}
+      {sheet && (
+        <div className="flex min-h-11 shrink-0 items-center">
+          <button
+            type="button"
+            aria-expanded={sheetOpen}
+            aria-controls="side-body"
+            onClick={() => onSheetOpen(!sheetOpen)}
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 px-3 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            {selectionSummary && !sheetOpen ? (
+              <>
+                <span aria-hidden="true" className="selection-dot size-2.5 shrink-0 rounded-full" />
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="font-mono font-semibold">{selectionSummary.title}</span>
+                  {selectionSummary.sub && <span className="ml-2 text-xs text-muted-foreground">{selectionSummary.sub}</span>}
+                </span>
+              </>
+            ) : (
+              <>
+                <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                  {t(`노드 ${nets.length} · 부품 ${comps.length}`, `${nets.length} nets · ${comps.length} parts`)}
+                </span>
+              </>
+            )}
+            <span className="sr-only">{t(sheetOpen ? "목록 닫기" : "목록 열기")}</span>
+            {sheetOpen ? <ChevronDown className="size-4 shrink-0" aria-hidden="true" /> : <ChevronUp className="size-4 shrink-0" aria-hidden="true" />}
+          </button>
+          {!sheetOpen && handleExtra}
+        </div>
+      )}
 
-      <div id="side-body" className={cn("min-h-0 flex-1 flex-col border-t border-border md:flex md:border-t-0", sheetOpen ? "flex" : "hidden")}>
+      <div id="side-body" className={cn("min-h-0 flex-1 flex-col", sheet && "border-t border-border", !sheet || sheetOpen ? "flex" : "hidden")}>
       <form
         role="search"
-        className="border-b border-border p-3"
+        className={cn("flex items-center gap-1 border-b border-border", compact ? "p-2" : "p-3")}
         onSubmit={(e) => {
           e.preventDefault();
           onSubmitQuery();
@@ -105,7 +128,7 @@ export function SchematicSidebar({
         <label htmlFor="sch-search" className="sr-only">
           {t("노드, 핀, 부품 이름 검색")}
         </label>
-        <div className="relative">
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             id="sch-search"
@@ -128,6 +151,11 @@ export function SchematicSidebar({
             </Button>
           )}
         </div>
+        {!sheet && onCollapse && (
+          <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" aria-label={t("목록 접기")} title={t("목록 접기")} onClick={onCollapse}>
+            <ChevronLeft aria-hidden="true" />
+          </Button>
+        )}
       </form>
 
       <TabStrip<SidebarTab>
@@ -171,7 +199,15 @@ export function SchematicSidebar({
 
       {tab === "nets" && (
         <div role="tabpanel" id="side-panel-nets" aria-labelledby="side-tab-nets" className="min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-2">
-          {fNets.length === 0 && <p className="px-2 py-6 text-sm text-muted-foreground">{t("일치하는 노드가 없습니다.")}</p>}
+          {noText && (
+            <p className="mx-1 mb-2 rounded-md border border-border bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+              {t(
+                "이 PDF는 글자가 선으로 그려져 있어 노드 이름을 읽을 수 없습니다. 도면에서 배선을 누르면 연결은 확인할 수 있습니다.",
+                "This PDF draws its lettering as lines, so net names can't be read. Click a wire in the drawing to see its connections.",
+              )}
+            </p>
+          )}
+          {fNets.length === 0 && !noText && <p className="px-2 py-6 text-sm text-muted-foreground">{t("일치하는 노드가 없습니다.")}</p>}
           {power.length > 0 && <NetGroup title={t("전원")} items={power} selected={selectedNet} onPick={onPickNet} />}
           {signal.length > 0 && <NetGroup title={t("신호")} items={signal} selected={selectedNet} onPick={onPickNet} />}
           {!q && unnamedCount > 0 && (
@@ -250,7 +286,11 @@ function NetGroup({
                 />
                 <span className="min-w-0 flex-1 truncate font-mono">{n.name}</span>
                 {n.labelCount > 1 && (
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground" aria-label={t(`라벨 ${n.labelCount}곳`, `${n.labelCount} labels`)}>
+                  <span
+                    className="shrink-0 text-xs tabular-nums text-muted-foreground"
+                    aria-label={t(`라벨 ${n.labelCount}곳`, `${n.labelCount} labels`)}
+                    title={active ? t("같은 이름 라벨로 차례로 이동") : undefined}
+                  >
                     ×{n.labelCount}
                   </span>
                 )}

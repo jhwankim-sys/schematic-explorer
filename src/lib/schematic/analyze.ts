@@ -56,7 +56,7 @@ export interface SchText {
   /** text lies inside an IC / module body outline (pin name) */
   inBody: boolean;
   /** how a label was tied to its wire (debugging aid) */
-  via?: "symbol" | "flag" | "along" | "near";
+  via?: "symbol" | "flag" | "along" | "near" | "ground";
 }
 
 export interface SchNet {
@@ -75,6 +75,8 @@ export interface SchComponent {
   textIds: number[];
   /** nearby value / part-number texts */
   values: string[];
+  /** where the part is when its lettering is not text (OrCAD part link box) */
+  box?: [number, number, number, number];
 }
 
 export interface SchDot {
@@ -113,8 +115,23 @@ export interface SchPage {
   textSize: number;
 }
 
+/** a link annotation in the same y-up space as text transforms */
+export interface RawLink {
+  rect: [number, number, number, number];
+  /** "net": jumps to another place (OrCAD net labels / off-page ports); "part": anything else (OrCAD part boxes) */
+  kind: "net" | "part";
+  /** the page text under the annotation (pdf.js overlaidText) */
+  text: string;
+  /** part links: properties from the link's popup script (OrCAD: Ref-Des, Value, Part Type) */
+  props?: Record<string, string>;
+  /** net links: the point (same page, y-up) the link jumps to (OrCAD: near the net's next label) */
+  dest?: [number, number];
+}
+
 export interface AnalyzeOptions {
   cadNetlist?: CadNetlist | null;
+  /** link annotations of the page (OrCAD Capture: part boxes with ref + value, net labels) */
+  links?: RawLink[];
   /** use CAD netlist hints for connectivity (default true) */
   useHints?: boolean;
 }
@@ -475,6 +492,80 @@ export function analyzePage(
     }
   }
 
+  // ---- link annotations (OrCAD Capture): net-label links name their text exactly, part links wrap
+  // a part with its reference and value; any other text inside a part box is a pin name / number
+  const partLinks: { box: Box; ref: string; values: string[]; hasText: boolean }[] = [];
+  /** net links: the label box, the text it wraps (if the page has a text layer) and where it jumps to */
+  const netLinks: { box: Box; text: number; dest: Pt | null }[] = [];
+  /** texts a net link says are net labels */
+  const linkLabel = new Set<number>();
+  if (opts.links?.length) {
+    const lg = new Grid(Math.max(4, S * 2));
+    texts.forEach((t) => lg.add(t.id, t.x0, t.y0, t.x1, t.y1));
+    const centreIn = (t: SchText, b: Box, m: number) => {
+      const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
+      return cx >= b[0] - m && cx <= b[2] + m && cy >= b[1] - m && cy <= b[3] + m;
+    };
+    const inBox = (b: Box) => lg.query(b[0], b[1], b[2], b[3]).map((id) => texts[id]);
+    const parts: { box: Box; lines: string[]; props?: Record<string, string> }[] = [];
+    for (const l of opts.links) {
+      const b: Box = [l.rect[0], H - l.rect[3], l.rect[2], H - l.rect[1]];
+      const lines = l.text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      if (l.kind === "net") {
+        // the text the link wraps (pdf.js' overlaidText bleeds into neighbouring links, so go by geometry)
+        let best: SchText | null = null;
+        let bestA = 0;
+        for (const t of inBox(b)) {
+          if (!centreIn(t, b, t.size * 0.3)) continue;
+          const a = Math.max(0, Math.min(t.x1, b[2]) - Math.max(t.x0, b[0])) * Math.max(0, Math.min(t.y1, b[3]) - Math.max(t.y0, b[1]));
+          if (a > bestA) {
+            bestA = a;
+            best = t;
+          }
+        }
+        if (best) linkLabel.add(best.id);
+        netLinks.push({ box: b, text: best ? best.id : -1, dest: l.dest ? [l.dest[0], H - l.dest[1]] : null });
+      } else if (lines.length || l.props) parts.push({ box: b, lines, props: l.props });
+    }
+    // only trust part links that look like OrCAD's: a reference designator (from the link's script,
+    // or written inside the box)
+    for (const p of parts) {
+      const inside = inBox(p.box);
+      const propRef = p.props?.["Ref-Des"];
+      const ref = propRef && /^[A-Z][\w-]{0,15}$/i.test(propRef) ? propRef : p.lines.find((l) => classifyText(l) === "component" && inside.some((t) => t.str === l));
+      if (!ref) continue;
+      const hasText = inside.some((t) => t.str === ref);
+      const propValue = p.props?.Value ?? p.props?.VALUE ?? p.props?.value;
+      // small parts: the other lines are the value (2k, 104, LM358); big ones list their pin names
+      const values = propValue
+        ? [propValue]
+        : p.lines.length <= 4
+          ? p.lines.filter((l) => l !== ref && inside.some((t) => t.str === l))
+          : [];
+      partLinks.push({ box: p.box, ref, values, hasText });
+    }
+    const chained = netLinks.filter((n) => n.dest).length;
+    if (linkLabel.size >= 3 || partLinks.length >= 3 || chained >= 3) {
+      for (const id of linkLabel) texts[id].kind = "net";
+      // with net links present, a name without one is a note ("25V" rating, "N", "rating=2V")
+      if (linkLabel.size >= 3) for (const t of texts) if (t.kind === "net" && !linkLabel.has(t.id)) t.kind = "note";
+      for (const p of partLinks)
+        for (const t of inBox(p.box)) {
+          if (!centreIn(t, p.box, 0) || linkLabel.has(t.id)) continue;
+          if (t.str === p.ref) t.kind = "component";
+          else if (p.values.includes(t.str)) t.kind = "value";
+          else {
+            t.inBody = true;
+            if (t.kind === "component" || t.kind === "net") t.kind = "pin";
+          }
+        }
+    } else {
+      linkLabel.clear();
+      partLinks.length = 0;
+      netLinks.length = 0;
+    }
+  }
+
   const textGrid = new Grid(Math.max(4, S * 2));
   texts.forEach((t) => textGrid.add(t.id, t.x0 - t.size, t.y0 - t.size, t.x1 + t.size, t.y1 + t.size));
   /** vector-drawn glyphs sit on top of the (invisible) text layer, but font metrics differ slightly */
@@ -621,9 +712,28 @@ export function analyzePage(
   const bars: [number, number, number, number][] = [];
   /** straight symbol lines (pins): a name written along one of these is a pin name, not a net label */
   const pinLines: number[] = [];
+  /** monochrome drawings: slanted strokes (port / off-page arrow tips) — never wires, but they tell port outlines apart */
+  const diags: number[] = [];
+  /** port outlines found among the wiring (kept whole: stacked ports touch and must not glue together) */
+  const portBoxes: Box[] = [];
 
+  /** monochrome: straight strokes taken for lettering (a port's back edge right beside its label can be) */
+  const glyphOrth: number[] = [];
   for (const p of prims) {
-    if (p.glyph) continue;
+    if (p.glyph) {
+      if (!colourMode && p.op !== "fill")
+        for (let k = 0; k < p.sp.straight.length; k++) {
+          if (!p.sp.straight[k]) continue;
+          const [x1, y1] = p.sp.pts[k];
+          const [x2, y2] = p.sp.pts[k + 1];
+          if (Math.abs(x1 - x2) < 0.02 || Math.abs(y1 - y2) < 0.02) glyphOrth.push(x1, y1, x2, y2);
+          else {
+            const l = Math.hypot(x2 - x1, y2 - y1);
+            if (l >= S * 0.15 && l <= S * 3) diags.push(x1, y1, x2, y2);
+          }
+        }
+      continue;
+    }
     const { sp, box } = p;
     const bw = box[2] - box[0];
     const bh = box[3] - box[1];
@@ -673,7 +783,11 @@ export function analyzePage(
       const [x1, y1] = sp.pts[k];
       const [x2, y2] = sp.pts[k + 1];
       const orth = Math.abs(x1 - x2) < 0.02 || Math.abs(y1 - y2) < 0.02;
-      if (!orth && !colourMode) continue;
+      if (!orth && !colourMode) {
+        const l = Math.hypot(x2 - x1, y2 - y1);
+        if (l >= S * 0.15 && l <= S * 3) diags.push(x1, y1, x2, y2);
+        continue;
+      }
       if (Math.hypot(x2 - x1, y2 - y1) < 0.05) continue;
       wire.push(x1, y1, x2, y2);
     }
@@ -715,8 +829,10 @@ export function analyzePage(
               const cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
               return cx > box[0] && cx < box[2] && cy > box[1] && cy < box[3];
             });
-            // a loop with lettering inside is a part body; a tiny one (resistor, fuse, crystal) is too
-            if (hasText || Math.max(box[2] - box[0], box[3] - box[1]) <= S * 3) {
+            // a loop with lettering inside is a part body; a tiny one (resistor, fuse, crystal) is too,
+            // and so is any loop drawn inside a part link's box (connector bodies)
+            const inPart = partLinks.some((p) => box[0] >= p.box[0] && box[2] <= p.box[2] && box[1] >= p.box[1] && box[3] <= p.box[3]);
+            if (hasText || inPart || Math.max(box[2] - box[0], box[3] - box[1]) <= S * 3) {
               bodies.push(box);
               drop.add(s).add(v1).add(h2).add(v2);
             }
@@ -730,6 +846,174 @@ export function analyzePage(
       wire.length = 0;
       wire.push(...kept);
     }
+  }
+
+  // monochrome drawings: port / off-page connector outlines (an arrow tip of two slanted strokes
+  // followed by two equal parallel edges, often closed by a back edge) are drawn with the same pen
+  // as the wiring. Stacked ports touch each other, so their edges would short every pin they label.
+  if (!colourMode && diags.length >= 8) {
+    const nS = wire.length / 4;
+    // strokes taken for lettering count as outline edges too (labels sit right against their port)
+    const pw = wire.concat(glyphOrth);
+    const nP = pw.length / 4;
+    const tol = Math.max(0.15, S * 0.04);
+    const q = (v: number) => Math.round(v / tol);
+    const endKey = (x: number, y: number) => `${q(x)},${q(y)}`;
+    const near = (x: number, y: number) => {
+      const out: number[] = [];
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++) for (const v of ends.get(`${q(x) + dx},${q(y) + dy}`) ?? []) out.push(v);
+      return out;
+    };
+    const ends = new Map<string, number[]>(); // wire ends: seg * 2 + end
+    for (let s = 0; s < nP; s++)
+      for (const e of [0, 1]) {
+        const k = endKey(pw[4 * s + 2 * e], pw[4 * s + 2 * e + 1]);
+        (ends.get(k) ?? ends.set(k, []).get(k)!).push(s * 2 + e);
+      }
+    const dEnds = new Map<string, number[]>(); // slanted stroke ends: diag * 2 + end
+    const nD = diags.length / 4;
+    for (let d = 0; d < nD; d++)
+      for (const e of [0, 1]) {
+        const k = endKey(diags[4 * d + 2 * e], diags[4 * d + 2 * e + 1]);
+        (dEnds.get(k) ?? dEnds.set(k, []).get(k)!).push(d * 2 + e);
+      }
+    const drop = new Set<number>();
+    const seen = new Set<string>();
+    const nearD = (x: number, y: number) => {
+      const out: number[] = [];
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++) for (const v of dEnds.get(`${q(x) + dx},${q(y) + dy}`) ?? []) out.push(v);
+      return out;
+    };
+    // an arrow tip: two slanted strokes meeting at one point (looked up across grid cells: ends a hair apart)
+    for (let vi = 0; vi < nD * 2; vi++) {
+      const px = diags[4 * (vi >> 1) + 2 * (vi & 1)], py = diags[4 * (vi >> 1) + 2 * (vi & 1) + 1];
+      for (const vj of nearD(px, py)) {
+        if (vj <= vi) continue;
+        {
+          const di = vi >> 1, dj = vj >> 1;
+          if (di === dj) continue;
+          const ei = vi & 1, ej = vj & 1;
+          if (Math.hypot(diags[4 * dj + 2 * ej] - px, diags[4 * dj + 2 * ej + 1] - py) > tol * 1.5) continue;
+          const tx = diags[4 * di + 2 * ei], ty = diags[4 * di + 2 * ei + 1];
+          const ax = diags[4 * di + 2 * (1 - ei)], ay = diags[4 * di + 2 * (1 - ei) + 1];
+          const bx = diags[4 * dj + 2 * (1 - ej)], by = diags[4 * dj + 2 * (1 - ej) + 1];
+          const vertBase = Math.abs(ax - bx) < tol, horizBase = Math.abs(ay - by) < tol;
+          if (vertBase === horizBase) continue;
+          const base = Math.hypot(ax - bx, ay - by);
+          if (base < S * 0.4 || base > S * 3.5) continue;
+          // symmetric tip
+          if (Math.abs(Math.hypot(ax - tx, ay - ty) - Math.hypot(bx - tx, by - ty)) > tol * 2) continue;
+          // the body runs away from the tip, perpendicular to the base
+          const ux = vertBase ? Math.sign(ax - tx) : 0;
+          const uy = horizBase ? Math.sign(ay - ty) : 0;
+          if (!ux && !uy) continue;
+          const edgeFrom = (px: number, py: number) => {
+            const found: { s: number; len: number; fx: number; fy: number }[] = [];
+            for (const v of near(px, py)) {
+              const s = v >> 1, e = v & 1;
+              const x0 = pw[4 * s + 2 * e], y0 = pw[4 * s + 2 * e + 1];
+              if (Math.hypot(x0 - px, y0 - py) > tol * 1.5) continue;
+              const fx = pw[4 * s + 2 * (1 - e)], fy = pw[4 * s + 2 * (1 - e) + 1];
+              const len = (fx - px) * ux + (fy - py) * uy;
+              const side = Math.abs((fx - px) * uy - (fy - py) * ux);
+              if (len > S * 0.5 && len < S * 30 && side < tol) found.push({ s, len, fx, fy });
+            }
+            return found;
+          };
+          const ea = edgeFrom(ax, ay), eb = edgeFrom(bx, by);
+          for (const a of ea)
+            for (const b of eb) {
+              if (a.s === b.s || Math.abs(a.len - b.len) > Math.max(tol * 2, a.len * 0.06)) continue;
+              const id = `${Math.min(a.s, b.s)}/${Math.max(a.s, b.s)}`;
+              if (seen.has(id)) continue;
+              // the back edge closing the outline (often split where the lead meets it)
+              const lo = vertBase ? Math.min(a.fy, b.fy) : Math.min(a.fx, b.fx);
+              const hi = vertBase ? Math.max(a.fy, b.fy) : Math.max(a.fx, b.fx);
+              const line = vertBase ? a.fx : a.fy;
+              const back: number[] = [];
+              let covered = 0;
+              for (const v of [...near(a.fx, a.fy), ...near(b.fx, b.fy)]) {
+                const s = v >> 1;
+                if (s === a.s || s === b.s || back.includes(s)) continue;
+                const al: number[] = [];
+                const onBack = [0, 1].every((e) => {
+                  const ox = pw[4 * s + 2 * e], oy = pw[4 * s + 2 * e + 1];
+                  const across = vertBase ? ox : oy, along = vertBase ? oy : ox;
+                  al.push(along);
+                  return Math.abs(across - line) <= tol && along >= lo - tol && along <= hi + tol;
+                });
+                if (onBack) {
+                  back.push(s);
+                  covered += Math.abs(al[1] - al[0]);
+                }
+              }
+              // a back edge taken for lettering (it sits right beside the label) still closes the outline
+              if (covered < (hi - lo) * 0.9)
+                for (let g = 0; g < glyphOrth.length; g += 4) {
+                  const gx1 = glyphOrth[g], gy1 = glyphOrth[g + 1], gx2 = glyphOrth[g + 2], gy2 = glyphOrth[g + 3];
+                  const a1 = vertBase ? gx1 : gy1, a2 = vertBase ? gx2 : gy2;
+                  if (Math.abs(a1 - line) > tol || Math.abs(a2 - line) > tol) continue;
+                  const l1 = vertBase ? gy1 : gx1, l2 = vertBase ? gy2 : gx2;
+                  const o = Math.min(Math.max(l1, l2), hi) - Math.max(Math.min(l1, l2), lo);
+                  if (o > 0) covered += o;
+                }
+              // a real outline is closed: by its back edge, or by a second arrow tip (both-way ports).
+              // Two stacked ports otherwise look like a phantom one made of their leads.
+              const tipAt = (x: number, y: number) =>
+                nearD(x, y).some((v) => Math.hypot(diags[4 * (v >> 1) + 2 * (v & 1)] - x, diags[4 * (v >> 1) + 2 * (v & 1) + 1] - y) <= tol * 1.5);
+              if (covered < (hi - lo) * 0.9 && !(tipAt(a.fx, a.fy) && tipAt(b.fx, b.fy))) continue;
+              seen.add(id);
+              drop.add(a.s).add(b.s);
+              for (const s of back) drop.add(s);
+              const xs = [tx, ax, bx, a.fx, b.fx], ys = [ty, ay, by, a.fy, b.fy];
+              const pb: Box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+              if (!portBoxes.some((o) => Math.abs(o[0] - pb[0]) < tol && Math.abs(o[1] - pb[1]) < tol && Math.abs(o[2] - pb[2]) < tol && Math.abs(o[3] - pb[3]) < tol))
+                portBoxes.push(pb);
+            }
+        }
+      }
+    }
+    if (drop.size) {
+      const kept: number[] = [];
+      for (let s = 0; s < nS; s++) if (!drop.has(s)) kept.push(wire[4 * s], wire[4 * s + 1], wire[4 * s + 2], wire[4 * s + 3]);
+      wire.length = 0;
+      wire.push(...kept);
+    }
+    // the tip strokes now belong to their port: left loose they would glue neighbouring symbols together
+    if (portBoxes.length) {
+      const pg = new Grid(Math.max(4, S * 2));
+      portBoxes.forEach((b, i) => pg.add(i, b[0], b[1], b[2], b[3]));
+      const m = tol * 1.5;
+      const inPort = (b: Box) =>
+        pg.query(b[0], b[1], b[2], b[3]).some((i) => {
+          const p = portBoxes[i];
+          return b[0] >= p[0] - m && b[2] <= p[2] + m && b[1] >= p[1] - m && b[3] <= p[3] + m;
+        });
+      const keptSym = symbols.filter((b) => !inPort(b));
+      symbols.length = 0;
+      symbols.push(...keptSym);
+    }
+  }
+
+  // no text layer (lettering drawn as strokes): what a net link wraps is the label's lettering, not wiring
+  if (!colourMode && netLinks.length && !texts.length) {
+    const lgrid = new Grid(Math.max(4, S * 2));
+    netLinks.forEach((n, i) => lgrid.add(i, n.box[0], n.box[1], n.box[2], n.box[3]));
+    const inLink = (x: number, y: number) =>
+      lgrid.query(x, y, x, y).some((i) => {
+        const b = netLinks[i].box;
+        return x > b[0] && x < b[2] && y > b[1] && y < b[3];
+      });
+    const kept: number[] = [];
+    for (let s = 0; s < wire.length / 4; s++) {
+      const x1 = wire[4 * s], y1 = wire[4 * s + 1], x2 = wire[4 * s + 2], y2 = wire[4 * s + 3];
+      if (inLink(x1, y1) && inLink(x2, y2)) continue;
+      kept.push(x1, y1, x2, y2);
+    }
+    wire.length = 0;
+    wire.push(...kept);
   }
 
   // a lead drawn straight through a diode triangle must not short anode to cathode
@@ -854,6 +1138,18 @@ export function analyzePage(
     dotGrid.query(x - tol, y - tol, x + tol, y + tol).some((i) => Math.hypot(dots[i].x - x, dots[i].y - y) <= dots[i].r + tol);
 
   const EPS = Math.max(0.08, wireWidth * 0.6, S * 0.03);
+  /** two straight strokes on the same line sharing a stretch of it */
+  const overlapsAlong = (a: number, b: number) => {
+    const ax1 = wire[4 * a], ay1 = wire[4 * a + 1], ax2 = wire[4 * a + 2], ay2 = wire[4 * a + 3];
+    const bx1 = wire[4 * b], by1 = wire[4 * b + 1], bx2 = wire[4 * b + 2], by2 = wire[4 * b + 3];
+    const aV = Math.abs(ax1 - ax2) < 0.02, bV = Math.abs(bx1 - bx2) < 0.02;
+    const aH = Math.abs(ay1 - ay2) < 0.02, bH = Math.abs(by1 - by2) < 0.02;
+    if (aV && bV && Math.abs(ax1 - bx1) <= EPS)
+      return Math.min(Math.max(ay1, ay2), Math.max(by1, by2)) - Math.max(Math.min(ay1, ay2), Math.min(by1, by2)) > EPS;
+    if (aH && bH && Math.abs(ay1 - by1) <= EPS)
+      return Math.min(Math.max(ax1, ax2), Math.max(bx1, bx2)) - Math.max(Math.min(ax1, ax2), Math.min(bx1, bx2)) > EPS;
+    return false;
+  };
   // stand-in pin segments (index ≥ realSegs) join only through the CAD netlist
   for (let s = 0; s < realSegs; s++) {
     for (const end of [0, 1]) {
@@ -866,6 +1162,8 @@ export function analyzePage(
           dsu.union(s, o); // corner / continuation
         } else if (distPtSeg(px, py, x1, y1, x2, y2) <= EPS && hasDot(px, py, EPS * 2)) {
           dsu.union(s, o); // T junction (a dot is required when wires can't be told from symbol lines)
+        } else if (distPtSeg(px, py, x1, y1, x2, y2) <= EPS && overlapsAlong(s, o)) {
+          dsu.union(s, o); // one line drawn over another (a port stub laid over its pin line)
         }
       }
     }
@@ -897,6 +1195,7 @@ export function analyzePage(
   for (const t of texts) {
     const cx = (t.x0 + t.x1) / 2;
     const cy = (t.y0 + t.y1) / 2;
+    if (t.inBody) continue; // a part link already said so
     t.inBody = bodyGrid.query(cx, cy, cx, cy).some((i) => {
       const b = bigBodies[i];
       // the whole sheet frame / title block is not a part body
@@ -932,7 +1231,10 @@ export function analyzePage(
       }
     });
     const merged = new Map<number, Box>();
+    const members = new Map<number, Box[]>();
     symbols.forEach((b, i) => {
+      const r0 = sd.find(i);
+      (members.get(r0) ?? members.set(r0, []).get(r0)!).push(b);
       const r = sd.find(i);
       const mm = merged.get(r);
       if (!mm) merged.set(r, [...b] as Box);
@@ -944,10 +1246,15 @@ export function analyzePage(
       }
     });
     symbols.length = 0;
-    merged.forEach((b) => {
+    const triSet = new Set<Box>(triangles);
+    merged.forEach((b, r) => {
       if (Math.max(b[2] - b[0], b[3] - b[1]) < S * 3) symbols.push(b);
+      // a row of power arrows touching each other: each arrow still marks its own pin
+      else if (!colourMode) for (const m of members.get(r) ?? []) if (triSet.has(m)) symbols.push(m);
     });
+    symbols.push(...portBoxes);
   }
+  const portSet = new Set<Box>(portBoxes);
   const symGrid = new Grid(Math.max(4, S * 2));
   symbols.forEach((b, i) => symGrid.add(i, b[0], b[1], b[2], b[3]));
   const nearestSeg = (box: Box, R: number) => {
@@ -1019,10 +1326,11 @@ export function analyzePage(
   };
   const endTouch = Math.max(0.4, S * 0.15);
   /** wire end inside / at the edge of a box (power pins and port tips connect to wire ends) */
-  const wireEndAt = (b: Box, m: number) => {
+  const wireEndAt = (b: Box, m: number, ref?: Pt) => {
     let best = -1;
     let bd = Infinity;
-    const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+    // rank by the label's own position when given: two touching power arrows glue into one symbol
+    const cx = ref ? ref[0] : (b[0] + b[2]) / 2, cy = ref ? ref[1] : (b[1] + b[3]) / 2;
     const inB = (x: number, y: number) => x >= b[0] - m && x <= b[2] + m && y >= b[1] - m && y <= b[3] + m;
     for (const o of segGrid.query(b[0] - m, b[1] - m, b[2] + m, b[3] + m))
       for (const e of [0, 1]) {
@@ -1072,6 +1380,13 @@ export function analyzePage(
       .map((i) => symbols[i])
       .filter((b) => {
         if (gapOf(b) > g) return false;
+        // a port names the label in line with it (not one sitting beside it)
+        if (portSet.has(b)) {
+          // (OrCAD sets the name a little off the port's axis)
+          const horizPort = b[2] - b[0] >= b[3] - b[1];
+          const m = t.size * 0.7;
+          if (horizPort ? tcy < b[1] - m || tcy > b[3] + m : tcx < b[0] - m || tcx > b[2] + m) return false;
+        }
         const ox = overlap(b[0], b[2], t.x0, t.x1);
         const oy = overlap(b[1], b[3], t.y0, t.y1);
         if (ox < 0.5 && oy < 0.5) return false;
@@ -1084,16 +1399,26 @@ export function analyzePage(
           return cx > b[0] && cx < b[2] && cy > b[1] && cy < b[3];
         });
       })
-      .sort((p, q) => gapOf(p) - gapOf(q));
+      .sort((p, q) => {
+        // stacked ports touch: the one in line with the label wins over its neighbours
+        const cross = (b: Box) => (!portSet.has(b) ? 0 : b[2] - b[0] >= b[3] - b[1] ? Math.abs(tcy - (b[1] + b[3]) / 2) : Math.abs(tcx - (b[0] + b[2]) / 2));
+        return gapOf(p) + cross(p) - (gapOf(q) + cross(q));
+      });
     let hit = -1;
     for (const b of own.slice(0, 3)) {
-      const o = wireEndAt(b, endTouch);
+      // a port's lead can stop short of the outline (its stub was taken for a pin number)
+      const o = wireEndAt(b, portSet.has(b) ? Math.max(endTouch, S * 0.4) : endTouch, linkLabel.has(t.id) ? [tcx, tcy] : undefined);
       if (o < 0) continue;
       // the wire must leave the symbol on the side away from the text
       const scx = (b[0] + b[2]) / 2, scy = (b[1] + b[3]) / 2;
       const e0 = Math.hypot(wire[4 * o] - tcx, wire[4 * o + 1] - tcy);
       const e1 = Math.hypot(wire[4 * o + 2] - tcx, wire[4 * o + 3] - tcy);
-      if (Math.min(e0, e1) + 0.1 < Math.hypot(scx - tcx, scy - tcy)) continue;
+      const toSym = Math.hypot(scx - tcx, scy - tcy);
+      // OrCAD draws the stem on through the power arrow to its tip: for a label its link names, a stem
+      // in line with the label that still leaves on the far side counts
+      const throughStem = linkLabel.has(t.id) && Math.max(e0, e1) > toSym + 0.1 && distPtSeg(tcx, tcy, wire[4 * o], wire[4 * o + 1], wire[4 * o + 2], wire[4 * o + 3]) <= Math.hypot(t.x1 - t.x0, t.y1 - t.y0) / 2 + toSym;
+      const inLine = throughStem && (Math.abs(wire[4 * o] - wire[4 * o + 2]) < 0.02 ? Math.abs(wire[4 * o] - tcx) : Math.abs(wire[4 * o + 1] - tcy)) < t.size * 0.6;
+      if (Math.min(e0, e1) + 0.1 < toSym && !inLine) continue;
       hit = o;
       break;
     }
@@ -1165,6 +1490,26 @@ export function analyzePage(
       }
     }
     for (let i = 1; i < groundSegs.length; i++) dsu.union(groundSegs[0], groundSegs[i]);
+  }
+  // OrCAD names its ground symbols with a linked "GND" beside the bars
+  if (linkLabel.size && groundSegs.length) {
+    const attached = new Set(labelAttach.map((a) => a.text));
+    for (const id of linkLabel) {
+      const t = texts[id];
+      if (attached.has(id) || !/GND|VSS|EARTH/i.test(t.str)) continue;
+      let best = -1, bd = S * 2.5;
+      for (const g of groundSegs) {
+        const d = distBoxSeg([t.x0, t.y0, t.x1, t.y1], wire[4 * g], wire[4 * g + 1], wire[4 * g + 2], wire[4 * g + 3]);
+        if (d < bd) {
+          bd = d;
+          best = g;
+        }
+      }
+      if (best >= 0) {
+        labelAttach.push({ text: id, seg: best, port: true });
+        t.via = "ground";
+      }
+    }
   }
 
   // same-name labels outside IC bodies are the same net
@@ -1339,7 +1684,7 @@ export function analyzePage(
   // ---- components (reference designators) with their nearby value text
   // loose references (PWRLED1, MICRO_SD1) count only when they don't name a wire and sit next to a value
   for (const t of texts) {
-    if (t.kind !== "net" || t.net >= 0 || t.inBody || !LOOSE_REF.test(t.str) || POWER.test(t.str)) continue;
+    if (t.kind !== "net" || t.net >= 0 || t.inBody || linkLabel.has(t.id) || !LOOSE_REF.test(t.str) || POWER.test(t.str)) continue;
     const s = t.size;
     const hasValue = textGrid
       .query(t.x0 - 3 * s, t.y0 - 2.5 * s, t.x1 + 3 * s, t.y1 + 2.5 * s)
@@ -1387,6 +1732,15 @@ export function analyzePage(
       .sort((a, b) => a.d - b.d)
       .slice(0, 2);
     for (const { o } of near) if (!c.values.includes(o.str)) c.values.push(o.str);
+  }
+  // part links know the value exactly (and stand in for references drawn as strokes)
+  for (const p of partLinks) {
+    let c = compMap.get(p.ref);
+    if (!c && !p.hasText) {
+      c = { ref: p.ref, textIds: [], values: [], box: p.box };
+      compMap.set(p.ref, c);
+    }
+    if (c && p.values.length) c.values = [...p.values];
   }
 
   return {

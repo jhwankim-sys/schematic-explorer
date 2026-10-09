@@ -1,7 +1,7 @@
 import { useT } from "./i18n.tsx";
 import { installFileDrop } from "./lib/file-drop.ts";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, FileUp, Focus, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileUp, Focus, List, X } from "lucide-react";
 import { Badge, Button, cn, Spinner } from "./components/ui.tsx";
 import { SchematicSidebar, type SidebarTab } from "./components/sidebar.tsx";
 import { SchematicViewer, type PdfRenderSource, type ViewerHandle } from "./components/viewer.tsx";
@@ -31,6 +31,32 @@ interface AppProps {
   headerEnd?: ReactNode;
 }
 
+const SIDE_QUERY = "(min-width: 768px), (orientation: landscape) and (max-height: 500px)";
+const COMPACT_QUERY = "(max-height: 500px)";
+
+/** wide screens and phones held sideways get the list beside the drawing; narrow portrait screens get a sheet */
+function useLayout() {
+  const read = () => {
+    try {
+      return { side: window.matchMedia(SIDE_QUERY).matches, compact: window.matchMedia(COMPACT_QUERY).matches };
+    } catch {
+      return { side: true, compact: false };
+    }
+  };
+  const [state, setState] = useState(read);
+  useEffect(() => {
+    const update = () => setState(read());
+    const mqs = [window.matchMedia(SIDE_QUERY), window.matchMedia(COMPACT_QUERY)];
+    mqs.forEach((m) => m.addEventListener("change", update));
+    window.addEventListener("resize", update);
+    return () => {
+      mqs.forEach((m) => m.removeEventListener("change", update));
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+  return state;
+}
+
 export function App({ active = true, headerStart, headerEnd }: AppProps) {
   const t = useT();
   const [dragging, setDragging] = useState(false);
@@ -48,6 +74,11 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
   const [detailOpen, setDetailOpen] = useState(true);
   /** small screens: whether the list sheet under the drawing is open */
   const [sheetOpen, setSheetOpen] = useState(false);
+  /** side layout: the list panel can be folded away for more drawing */
+  const [panelOpen, setPanelOpen] = useState(true);
+  const layout = useLayout();
+  /** which of the selected net's labels the user has stepped to (-1: none yet) */
+  const [occIdx, setOccIdx] = useState(-1);
   const viewer = useRef<ViewerHandle>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   /** set while the query comes from typing: the view then moves to the first hit without Enter */
@@ -94,7 +125,23 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
     [doc],
   );
 
-  const matches = useMemo(() => (page ? matchTexts(page, query) : []), [page, query]);
+  /** parts whose reference is drawn as strokes are still searchable by their box */
+  const partBoxTexts = useMemo(
+    () =>
+      page
+        ? page.components
+            .filter((c) => !c.textIds.length && c.box)
+            .map((c, i) => {
+              const [x0, y0, x1, y1] = c.box!;
+              return { id: -1 - i, str: c.ref, kind: "component", x0, y0, x1, y1, ax: x0, ay: y1, size: y1 - y0, rot: 0, net: -1, inBody: false } as SchText;
+            })
+        : [],
+    [page],
+  );
+  const matches = useMemo(
+    () => (page ? matchTexts(partBoxTexts.length ? { ...page, texts: page.texts.concat(partBoxTexts) } : page, query) : []),
+    [page, query, partBoxTexts],
+  );
   const exactCount = useMemo(() => countExact(matches, query), [matches, query]);
 
   // ----- selection helpers
@@ -109,15 +156,6 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
     [doc],
   );
 
-  const pickNetEntry = useCallback(
-    (e: NetEntry) => {
-      const w = e.where.find((x) => x.page === pageIdx) ?? e.where[0];
-      setSheetOpen(false);
-      selectNet(w.page, w.netIds, e.name);
-    },
-    [pageIdx, selectNet],
-  );
-
   const pickComp = useCallback(
     (c: CompEntry) => {
       if (!doc) return;
@@ -126,7 +164,7 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
       setSheetOpen(false);
       setPageIdx(w.page);
       setSel({ type: "component", ref: c.ref });
-      const b = unionBox(w.textIds.map((id) => textBox(p.texts[id])));
+      const b = unionBox(w.textIds.map((id) => textBox(p.texts[id]))) ?? w.box ?? null;
       if (b) requestAnimationFrame(() => viewer.current?.fit([b[0] - 30, b[1] - 22, b[2] + 30, b[3] + 22], 0.05));
     },
     [doc, pageIdx],
@@ -165,6 +203,19 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
         setSel(null);
         return;
       }
+      // parts known only by their box (lettering drawn as strokes): the smallest box under the pointer
+      let part: { ref: string; area: number } | null = null;
+      for (const c of page.components) {
+        const b = c.box;
+        if (!b || x < b[0] || x > b[2] || y < b[1] || y > b[3]) continue;
+        const area = (b[2] - b[0]) * (b[3] - b[1]);
+        if (!part || area < part.area) part = { ref: c.ref, area };
+      }
+      if (part) {
+        setSel({ type: "component", ref: part.ref });
+        setTab("parts");
+        return;
+      }
       setSel(null);
     },
     [page, index, compEntries, selectNet],
@@ -174,6 +225,52 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
   const selEntry = useMemo(
     () => (sel?.type === "net" && sel.name ? netEntries.find((e) => e.name.toUpperCase() === sel.name.toUpperCase()) ?? null : null),
     [sel, netEntries],
+  );
+
+  /** every label of the selected named net, in reading order across the pages (what "×3" counts) */
+  const occurrences = useMemo(() => {
+    if (!doc || sel?.type !== "net" || !sel.name) return [];
+    const key = sel.name.toUpperCase();
+    const out: { page: number; text: SchText }[] = [];
+    for (const p of doc.pages) {
+      const ids = new Set<number>();
+      for (const n of p.nets) if (n.name.toUpperCase() === key) for (const l of n.labels) if (p.texts[l].str.toUpperCase() === key) ids.add(l);
+      const list = [...ids].map((i) => p.texts[i]);
+      list.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
+      for (const text of list) out.push({ page: p.index, text });
+    }
+    return out;
+  }, [doc, sel]);
+  const occName = sel?.type === "net" ? sel.name : "";
+  useEffect(() => setOccIdx(-1), [occName]);
+
+  /** move to one of the selected net's labels (wraps around) */
+  const gotoOcc = useCallback(
+    (i: number) => {
+      if (!doc || !occurrences.length || sel?.type !== "net") return;
+      const k = ((i % occurrences.length) + occurrences.length) % occurrences.length;
+      const o = occurrences[k];
+      setOccIdx(k);
+      if (o.page !== pageIdx || sel.page !== o.page) selectNet(o.page, netsNamed(doc.pages[o.page], sel.name), sel.name, false);
+      const t = o.text;
+      const m = Math.max(t.size * 8, 40);
+      requestAnimationFrame(() => viewer.current?.fit([t.x0 - m, t.y0 - m * 0.7, t.x1 + m, t.y1 + m * 0.7], 0.05));
+    },
+    [doc, occurrences, sel, pageIdx, selectNet],
+  );
+
+  const pickNetEntry = useCallback(
+    (e: NetEntry) => {
+      setSheetOpen(false);
+      // clicking the selected net again walks through its labels (×3 → 1/3, 2/3, 3/3)
+      if (sel?.type === "net" && sel.name && sel.name.toUpperCase() === e.name.toUpperCase() && occurrences.length) {
+        gotoOcc(occIdx + 1);
+        return;
+      }
+      const w = e.where.find((x) => x.page === pageIdx) ?? e.where[0];
+      selectNet(w.page, w.netIds, e.name);
+    },
+    [pageIdx, selectNet, sel, occurrences, occIdx, gotoOcc],
   );
 
   /** switching pages keeps a named net selected when it is on the new page too */
@@ -198,7 +295,13 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
       return [...ids].map((i) => page.texts[i]);
     }
     const c = page.components.find((c) => c.ref === sel.ref);
-    return c ? c.textIds.map((i) => page.texts[i]) : [];
+    if (!c) return [];
+    // a part whose lettering is strokes: outline its box instead
+    if (!c.textIds.length && c.box) {
+      const [x0, y0, x1, y1] = c.box;
+      return [{ id: -1, str: c.ref, kind: "component", x0, y0, x1, y1, ax: x0, ay: y1, size: y1 - y0, rot: 0, net: -1, inBody: false } as SchText];
+    }
+    return c.textIds.map((i) => page.texts[i]);
   }, [page, pageIdx, sel]);
 
   const netInfo = useMemo(() => {
@@ -336,6 +439,20 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
                 ))}
               </div>
             )}
+            {occurrences.length > 0 && (
+              <div className="mt-2 flex items-center gap-1">
+                <h3 className="mr-auto text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("라벨 위치")}</h3>
+                <Button variant="outline" size="icon" className="size-7" aria-label={t("이전 라벨")} onClick={() => gotoOcc(occIdx < 0 ? -1 : occIdx - 1)}>
+                  <ChevronLeft aria-hidden="true" />
+                </Button>
+                <span className="min-w-12 text-center text-xs tabular-nums" aria-live="polite">
+                  {occIdx < 0 ? "–" : occIdx + 1} / {occurrences.length}
+                </span>
+                <Button variant="outline" size="icon" className="size-7" aria-label={t("다음 라벨")} onClick={() => gotoOcc(occIdx + 1)}>
+                  <ChevronRight aria-hidden="true" />
+                </Button>
+              </div>
+            )}
             {netInfo.labels.length > 0 && (
               <div className="mt-2">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("연결된 라벨·핀 이름")}</h3>
@@ -391,7 +508,12 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
       >
         {t("도면으로 건너뛰기")}
       </a>
-      <header className="viewer-toolbar flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
+      <header
+        className={cn(
+          "viewer-toolbar flex shrink-0 items-center gap-3 border-b border-border bg-card px-4",
+          layout.side && !layout.compact ? "min-h-14 flex-wrap py-2" : "min-h-11 py-1",
+        )}
+      >
         <h1 className="sr-only">Schematic Viewer</h1>
         {headerStart}
         {doc && (
@@ -453,8 +575,8 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
         </div>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col-reverse md:flex-row">
-        {doc && page && (
+      <main className={cn("flex min-h-0 flex-1", layout.side ? "flex-row" : "flex-col-reverse")}>
+        {doc && page && (!layout.side || panelOpen) && (
           <SchematicSidebar
             query={query}
             onQuery={(q) => {
@@ -468,6 +590,7 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
             nets={netEntries}
             comps={compEntries}
             unnamedCount={unnamedCount}
+            noText={doc.pages.every((p) => p.texts.length === 0)}
             selectedNet={sel?.type === "net" ? sel.name || null : null}
             selectedComp={sel?.type === "component" ? sel.ref : null}
             onPickNet={pickNetEntry}
@@ -475,8 +598,26 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
             onExport={exportCsv}
             detail={detail}
             selectionSummary={selectionSummary}
+            layout={layout.side ? "side" : "sheet"}
+            compact={layout.compact}
             sheetOpen={sheetOpen}
             onSheetOpen={setSheetOpen}
+            onCollapse={() => setPanelOpen(false)}
+            handleExtra={
+              occurrences.length > 1 ? (
+                <div className="flex shrink-0 items-center pr-1">
+                  <Button variant="ghost" size="icon" className="size-9" aria-label={t("이전 라벨")} onClick={() => gotoOcc(occIdx < 0 ? -1 : occIdx - 1)}>
+                    <ChevronLeft aria-hidden="true" />
+                  </Button>
+                  <span className="min-w-9 text-center text-xs tabular-nums text-muted-foreground">
+                    {occIdx < 0 ? "–" : occIdx + 1}/{occurrences.length}
+                  </span>
+                  <Button variant="ghost" size="icon" className="size-9" aria-label={t("다음 라벨")} onClick={() => gotoOcc(occIdx + 1)}>
+                    <ChevronRight aria-hidden="true" />
+                  </Button>
+                </div>
+              ) : null
+            }
           />
         )}
 
@@ -491,16 +632,24 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
               pdf={doc.pdf as PdfRenderSource}
               netIds={netIds}
               focusTexts={focusTexts}
+              activeFocus={occIdx >= 0 && occurrences[occIdx]?.page === pageIdx ? occurrences[occIdx].text : null}
               matches={matches}
               activeMatch={matchIdx}
               onPick={onPick}
             />
           )}
 
+          {doc && page && layout.side && !panelOpen && (
+            <Button variant="outline" size="sm" className="absolute left-3 top-3 shadow-sm" onClick={() => setPanelOpen(true)}>
+              <List aria-hidden="true" />
+              {t("목록")}
+            </Button>
+          )}
+
           {doc && query.trim() && (
-            <div className="absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-1 rounded-md border border-border bg-popover py-1 pl-3 pr-1 text-sm shadow-sm">
-              <span className="font-mono">{query.trim()}</span>
-              <span className="px-2 tabular-nums text-muted-foreground" aria-live="polite">
+            <div className="absolute left-1/2 top-3 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-md border border-border bg-popover py-1 pl-3 pr-1 text-sm shadow-sm">
+              <span className="min-w-0 truncate font-mono">{query.trim()}</span>
+              <span className="shrink-0 px-2 tabular-nums text-muted-foreground" aria-live="polite">
                 {matches.length ? `${Math.min(matchIdx + 1, matches.length)} / ${matches.length}` : t("도면에 없음")}
                 {exactCount > 0 && exactCount < matches.length && (
                   <span className="ml-2 text-xs">
@@ -539,7 +688,7 @@ export function App({ active = true, headerStart, headerEnd }: AppProps) {
           )}
         </section>
       </main>
-      <footer className="viewer-status"><span className="status-dot" />{t("파일은 브라우저 안에서만 분석됩니다.")}<span>{t("휠: 확대·축소 · 드래그: 이동")}</span></footer>
+      <footer className="viewer-status" hidden={!layout.side || layout.compact}><span className="status-dot" />{t("파일은 브라우저 안에서만 분석됩니다.")}<span>{t("휠: 확대·축소 · 드래그: 이동")}</span></footer>
       {dragging && <div className="drop-overlay" role="status"><div><FileUp aria-hidden="true" /><h2>{t(doc ? "파일을 여기에 놓으면 현재 도면이 교체됩니다" : "PDF를 놓아 열기")}</h2><p>{t("파일은 브라우저 안에서만 분석됩니다.")}</p></div></div>}
     </div>
   );

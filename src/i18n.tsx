@@ -29,7 +29,8 @@ const english: Record<string, string> = {
   "노드 목록 CSV": "Nets CSV", "부품 목록 CSV": "Parts CSV", "정확히 일치": "exact",
   "이 페이지에는 이 노드가 없습니다.": "This net is not on this page.", "있는 페이지": "Pages",
   "홈으로": "Home",
-  "목록 열기": "Open list", "목록 닫기": "Close list", "선택한 항목": "Selection",
+  "목록 열기": "Open list", "목록 접기": "Hide list", "목록": "List", "라벨 위치": "Labels", "이전 라벨": "Previous label", "다음 라벨": "Next label",
+  "같은 이름 라벨로 차례로 이동": "Click again to step through its labels", "목록 닫기": "Close list", "선택한 항목": "Selection",
 };
 export function useT() {
   const language = useContext(LanguageContext);
