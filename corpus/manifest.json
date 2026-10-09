@@ -63,6 +63,15 @@
       "source": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_B/ESP32-C3-DevKit-Lipo_Rev_B.sch"
     },
     {
+      "id": "olimex-esp32-poe-i",
+      "tool": "kicad5",
+      "repo": "OLIMEX/ESP32-POE",
+      "commit": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+      "pdf": "HARDWARE/ESP32-PoE-hardware-revision-I/ESP32-PoE_Rev_I.pdf",
+      "source": "HARDWARE/ESP32-PoE-hardware-revision-I/ESP32-PoE_Rev_I.sch",
+      "note": "사이트 예제 회로도 (public/examples/olimex-esp32-poe-rev-i.pdf 와 같은 파일)"
+    },
+    {
       "id": "olimex-esp32-poe-m",
       "tool": "kicad5",
       "repo": "OLIMEX/ESP32-POE",
