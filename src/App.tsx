@@ -475,7 +475,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             </p>
             {doc && doc.pages.length > 1 && selEntry && (
               <div className="mt-2 flex flex-wrap items-center gap-1">
-                <h3 className="mr-1 text-xs font-semibold text-muted-foreground">
+                <h3 className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {t("있는 페이지")} {selEntry.where.length}/{doc.pages.length}
                 </h3>
                 {selEntry.where.map((w) => (
@@ -494,7 +494,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             )}
             {occurrences.length > 0 && (
               <div className="mt-2 flex items-center gap-1">
-                <h3 className="mr-auto text-xs font-semibold text-muted-foreground">{t("라벨 위치")}</h3>
+                <h3 className="mr-auto text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("라벨 위치")}</h3>
                 <Button variant="outline" size="icon" className="size-7" aria-label={t("이전 라벨")} onClick={() => gotoOcc(occIdx < 0 ? -1 : occIdx - 1)}>
                   <ChevronLeft aria-hidden="true" />
                 </Button>
@@ -508,7 +508,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             )}
             {netInfo.labels.length > 0 && (
               <div className="mt-2">
-                <h3 className="text-xs font-semibold text-muted-foreground">{t("연결된 라벨·핀 이름")}</h3>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("연결된 라벨·핀 이름")}</h3>
                 <ul className="mt-1.5 flex max-h-28 flex-wrap gap-1 overflow-y-auto">
                   {netInfo.labels.map(([s, n]) => (
                     <li key={s}>
