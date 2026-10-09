@@ -265,7 +265,7 @@ function NetGroup({
   const t = useT();
   return (
     <section className="mb-3">
-      <h3 className="px-2 pb-1 pt-2 text-xs font-semibold text-muted-foreground">{title}</h3>
+      <h3 className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
       <ul className="flex flex-col">
         {items.map((n) => {
           const active = selected?.toUpperCase() === n.name.toUpperCase();
