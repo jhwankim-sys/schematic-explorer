@@ -16,7 +16,7 @@ export const example: PageDef = {
 
 <h2>1단계: 예제 열기</h2>
 <ol class="steps">
-<li>첫 화면의 <strong>예제로 먼저 보기</strong>나 PDF 열기 화면의 <strong>예제 회로도 열기</strong>를 누릅니다. 파일은 이 사이트에서 받아 브라우저 안에서 분석됩니다.</li>
+<li>첫 화면의 <strong>예제 회로도로 체험하기</strong>나 도구 화면의 <strong>예제 회로도로 먼저 해 보기</strong>를 누릅니다. 파일은 이 사이트에서 받아 브라우저 안에서 분석됩니다.</li>
 <li>몇 초 뒤 도면 전체가 화면에 맞춰 나오고, 목록에 <em>노드 40</em>, <em>부품 129</em>가 표시됩니다.</li>
 <li>도면에는 Power Supply, ESP32-WROOM-32 Module, Ethernet, USB to UART, Buttons 같은 블록 제목이 보입니다. 마우스 휠이나 두 손가락으로 확대해 각 블록을 둘러봅니다.</li>
 </ol>
@@ -63,7 +63,7 @@ export const example: PageDef = {
 
 <h2>Step 1: open the example</h2>
 <ol class="steps">
-<li>Choose <strong>Try the example first</strong> on the home page, or <strong>Open the example schematic</strong> on the open-a-file screen. The file is fetched from this site and analyzed in your browser.</li>
+<li>Choose <strong>Try an example</strong> on the home page, or <strong>Try an example schematic</strong> in the tool. The file is fetched from this site and analyzed in your browser.</li>
 <li>A few seconds later the whole sheet fits the screen and the list shows <em>Nets 40</em> and <em>Parts 129</em>.</li>
 <li>Block titles such as Power Supply, ESP32-WROOM-32 Module, Ethernet, USB to UART and Buttons are visible. Zoom with the wheel or two fingers to look around.</li>
 </ol>
