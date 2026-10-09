@@ -1,6 +1,5 @@
 import type { PageDef } from "./index.ts";
 
-const ISSUES = "https://github.com/jhwankim-sys/schematic-explorer/issues";
 const EFFECTIVE = "2026-10-09";
 
 // Keep every statement here true to what the site actually does.
@@ -48,7 +47,7 @@ export const privacy: PageDef = {
 <tr><td>언어 설정</td><td>선택한 언어(한국어/English)를 다음 방문 때 유지하려고 이용자 브라우저의 localStorage에 저장합니다. 서버로 전송되지 않습니다.</td><td>이용자가 브라우저 데이터를 지울 때까지</td></tr>
 <tr><td>방문 통계</td><td>아래 3항 참고</td><td>Google 정책에 따름</td></tr>
 <tr><td>광고 관련 정보</td><td>아래 4항 참고</td><td>Google 정책에 따름</td></tr>
-<tr><td>문의 내용(이메일 주소, 보낸 내용)</td><td>이용자가 이메일이나 GitHub 이슈로 연락한 경우 답변을 위해서만 사용합니다.</td><td>답변 완료 후 1년 이내 삭제(GitHub 이슈는 이용자가 직접 삭제 가능)</td></tr>
+<tr><td>문의 내용(이메일 주소, 보낸 내용)</td><td>이용자가 이메일로 연락한 경우 답변을 위해서만 사용합니다.</td><td>답변 완료 후 1년 이내 삭제</td></tr>
 </tbody>
 </table>
 
@@ -78,7 +77,7 @@ ${ga}
 <h2>8. 개인정보 보호책임자와 연락처</h2>
 <ul>
 <li>개인정보 보호책임자: 사이트 운영자</li>
-<li>연락처: ${reach ? reach + ", " : ""}<a href="${href("contact")}">문의 페이지</a>, <a href="${ISSUES}">GitHub 이슈</a></li>
+<li>연락처: ${reach ? reach + ", " : ""}<a href="${href("contact")}">문의 페이지</a></li>
 </ul>
 <p>개인정보 침해에 대한 상담이 필요하면 개인정보침해신고센터(privacy.kisa.or.kr, 국번 없이 118), 개인정보분쟁조정위원회(www.kopico.go.kr, 1833-6972)에 문의할 수 있습니다.</p>
 
@@ -124,7 +123,7 @@ ${ga}
 <tr><td>Language setting</td><td>Your chosen language (Korean/English) is kept in your browser's localStorage so it is remembered next time. It is not sent anywhere.</td><td>Until you clear browser data</td></tr>
 <tr><td>Visitor statistics</td><td>See section 3</td><td>Per Google's policies</td></tr>
 <tr><td>Advertising data</td><td>See section 4</td><td>Per Google's policies</td></tr>
-<tr><td>Messages you send (email address, content)</td><td>Used only to reply when you contact us by email or GitHub issues.</td><td>Deleted within one year after the reply (you can delete GitHub issues yourself)</td></tr>
+<tr><td>Messages you send (email address, content)</td><td>Used only to reply when you contact us by email.</td><td>Deleted within one year after the reply</td></tr>
 </tbody>
 </table>
 
@@ -154,7 +153,7 @@ ${ga}
 <h2>8. Privacy officer and contact</h2>
 <ul>
 <li>Privacy officer: the site operator</li>
-<li>Contact: ${reach ? reach + ", " : ""}<a href="${href("contact")}">contact page</a>, <a href="${ISSUES}">GitHub issues</a></li>
+<li>Contact: ${reach ? reach + ", " : ""}<a href="${href("contact")}">contact page</a></li>
 </ul>
 
 <h2>9. Changes</h2>
