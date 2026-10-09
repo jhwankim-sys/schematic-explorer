@@ -141,7 +141,7 @@ for (const e of loadManifest()) {
       rp.stroke = "#000000";
       rp.fill = rp.fill && /^#(?:f|e)/i.test(rp.fill) ? rp.fill : "#000000";
     }
-    const page = analyzePage(p - 1, raw.width, raw.height, raw.paths, raw.texts, { cadNetlist: cad });
+    const page = analyzePage(p - 1, raw.width, raw.height, raw.paths, raw.texts, { cadNetlist: cad, links: raw.links });
     let ws: WireScore | null = null;
     let ps: PinScore | null = null;
     if (gt && p === (e.sheet ?? 0) + 1) {
