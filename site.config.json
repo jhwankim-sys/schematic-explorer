@@ -1,8 +1,8 @@
 {
   "//": "사이트 설정. 값을 넣고 main에 반영하면 다음 배포부터 적용됩니다. 빈 값이면 해당 기능은 꺼져 있습니다.",
   "siteUrl": "https://schematicviewer.com",
-  "contactEmail": "",
-  "ga4MeasurementId": "",
+  "contactEmail": "jwankim.sys@gmail.com",
+  "ga4MeasurementId": "G-1HY6EEH4BF",
   "googleSiteVerification": "",
-  "naverSiteVerification": ""
+  "naverSiteVerification": "e635214e700c51be1d5e403b363c6bcfc5ff9d96"
 }
