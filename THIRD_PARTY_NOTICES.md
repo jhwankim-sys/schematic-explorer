@@ -14,3 +14,11 @@
 | typescript | 타입 검사 (개발용) | Apache-2.0 |
 
 모두 상업적 이용·수정·배포가 허용되는 라이선스입니다. Apache-2.0은 수정 사항 고지와 NOTICE 파일 유지 의무가 있습니다.
+
+## 예제 회로도 (Example schematic)
+
+| 파일 | 출처 | 라이선스 |
+|---|---|---|
+| `public/examples/olimex-esp32-poe-rev-i.pdf` | Olimex Ltd., ESP32-PoE Rev. I 회로도 — https://github.com/OLIMEX/ESP32-POE | Apache-2.0 |
+
+원본을 수정하지 않고 그대로 제공합니다. 라이선스 전문과 고지는 `public/examples/LICENSE-olimex-esp32-poe.txt`, `public/examples/NOTICE-olimex-esp32-poe.txt`에 있습니다. Olimex는 이 사이트와 관계가 없습니다.

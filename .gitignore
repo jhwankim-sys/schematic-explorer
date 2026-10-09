@@ -6,6 +6,8 @@ dist/
 # 회로도 원본·분석 결과는 저장소에 올리지 않음 (고객/회사 자료 유출 방지)
 samples/
 *.pdf
+# 사이트에 싣는 공개 예제 회로도만 예외
+!public/examples/*.pdf
 *.analysis.json
 
 # 코퍼스: 목록(manifest.json)만 올리고 내려받은 파일·결과는 제외
