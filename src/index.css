@@ -193,6 +193,10 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-
 }
 
 .focus-text { fill: color-mix(in srgb, var(--net-glow) 22%, transparent); stroke: var(--net-highlight); }
+.side-compact [role=tab] svg { display: none; }
+.focus-ping { stroke: var(--net-highlight); animation: focus-ping 1.2s ease-out 2; }
+@keyframes focus-ping { 0% { stroke-opacity: 1; } 50% { stroke-opacity: .25; } 100% { stroke-opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .focus-ping { animation: none; } }
 .selection-dot { background: var(--net-highlight); box-shadow: 0 0 0 3px color-mix(in srgb, var(--net-glow) 35%, transparent); }
 
 @media (forced-colors: active) {
