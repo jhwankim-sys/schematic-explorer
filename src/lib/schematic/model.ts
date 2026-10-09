@@ -16,7 +16,8 @@ export interface NetEntry {
 export interface CompEntry {
   ref: string;
   values: string[];
-  where: { page: number; textIds: number[] }[];
+  /** per page: the reference texts, or the part's box when its lettering is not text */
+  where: { page: number; textIds: number[]; box?: Box }[];
 }
 
 export type Box = [number, number, number, number];
@@ -99,7 +100,7 @@ export function buildCompEntries(pages: SchPage[]): CompEntry[] {
         map.set(c.ref, e);
       }
       for (const v of c.values) if (!e.values.includes(v)) e.values.push(v);
-      e.where.push({ page: p.index, textIds: c.textIds });
+      e.where.push({ page: p.index, textIds: c.textIds, box: c.box });
     }
   return [...map.values()].sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
 }
