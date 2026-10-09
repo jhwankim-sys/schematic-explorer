@@ -25,6 +25,8 @@ export interface GroundTruth {
   nets: GtNet[];
   /** reference designators placed on the sheet (R1, U3 …) */
   refs: string[];
+  /** value written next to each reference (10k/R0402, LM358 …), when the format stores it */
+  values: Record<string, string>;
   /** label anchors, used to align coordinates */
   labels: { name: string; x: number; y: number }[];
 }
@@ -141,6 +143,7 @@ export function readKicadLegacy(src: string): GroundTruth {
   const junctions: [number, number][] = [];
   const named: { name: string; x: number; y: number; global: boolean }[] = [];
   const refs: string[] = [];
+  const values: Record<string, string> = {};
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     if (l.startsWith("Wire Wire Line")) {
@@ -169,11 +172,19 @@ export function readKicadLegacy(src: string): GroundTruth {
           const f = c.split(/\s+/);
           x = +f[1];
           y = +f[2];
+        } else if (c.startsWith("F 0 ")) {
+          // the annotated reference as printed (the "L" line keeps "C?" on sheets annotated through AR paths)
+          const shown = /"([^"]*)"/.exec(c)?.[1];
+          if (shown) ref = shown;
         } else if (c.startsWith("F 1 ")) value = /"([^"]*)"/.exec(c)?.[1] ?? "";
       }
       if (ref.startsWith("#PWR") || /power:/i.test(lib)) {
         if (value && !/PWR_FLAG/i.test(value)) named.push({ name: value, x, y, global: true });
-      } else if (!ref.startsWith("#")) refs.push(ref.replace(/\?$/, ""));
+      } else if (!ref.startsWith("#")) {
+        ref = ref.replace(/\?$/, "");
+        refs.push(ref);
+        if (value && !(ref in values)) values[ref] = plainName(value);
+      }
     }
   }
   const { wires: w, nets } = connect(wires, junctions, named, 0.6);
@@ -183,6 +194,7 @@ export function readKicadLegacy(src: string): GroundTruth {
     wires: w,
     nets,
     refs: [...new Set(refs)],
+    values,
     labels: named.map(({ name, x, y }) => ({ name, x, y })),
   };
 }
@@ -256,6 +268,7 @@ export function readKicadSexpr(src: string): GroundTruth {
   const junctions: [number, number][] = [];
   const named: { name: string; x: number; y: number; global: boolean }[] = [];
   const refs: string[] = [];
+  const values: Record<string, string> = {};
   const libs = new Map<string, { power: boolean; pins: LibPin[] }>();
   for (const s of kids(kid(root, "lib_symbols") ?? [], "symbol"))
     libs.set(s[1] as string, { power: kids(s, "power").length > 0, pins: libPins(s) });
@@ -293,7 +306,11 @@ export function readKicadSexpr(src: string): GroundTruth {
         const qx = px * Math.cos(r) - py * Math.sin(r);
         const qy = px * Math.sin(r) + py * Math.cos(r);
         if (value && !/PWR_FLAG/i.test(value)) named.push({ name: value, x: x + qx, y: y + qy, global: true });
-      } else if (ref && !ref.startsWith("#")) refs.push(ref);
+      } else if (ref && !ref.startsWith("#")) {
+        refs.push(ref);
+        const value = prop("Value");
+        if (value && !(ref in values)) values[ref] = plainName(value);
+      }
     }
   }
   const { wires: w, nets } = connect(wires, junctions, named, 0.02);
@@ -303,6 +320,7 @@ export function readKicadSexpr(src: string): GroundTruth {
     wires: w,
     nets,
     refs: [...new Set(refs)],
+    values,
     labels: named.map(({ name, x, y }) => ({ name, x, y })),
   };
 }
@@ -348,7 +366,7 @@ export function readEagle(src: string, sheetIndex = 0): GroundTruth {
     const a = attrs(ins[1]);
     if (a.part && /^[A-Z]+\d+[A-Z]?$/i.test(a.part)) refs.push(a.part);
   }
-  return { unitToPt: null, yDown: false, wires, nets, refs: [...new Set(refs)], labels };
+  return { unitToPt: null, yDown: false, wires, nets, refs: [...new Set(refs)], values: {}, labels };
 }
 
 export function readGroundTruth(fileName: string, src: string): GroundTruth {

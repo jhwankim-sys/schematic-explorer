@@ -122,7 +122,7 @@ const pct = (v: number) => (Number.isNaN(v) ? "  -  " : `${(v * 100).toFixed(1).
 const rows: Record<string, unknown>[] = [];
 console.log(
   "id".padEnd(32) +
-    " 도구    | 배선정밀 배선재현 묶음정밀 묶음재현 넷정확 이름정확 | 부품재현 부품정밀",
+    " 도구    | 배선정밀 배선재현 묶음정밀 묶음재현 넷정확 이름정확 | 부품재현 부품정밀 값정확 | 가짜이름",
 );
 for (const e of loadManifest()) {
   if (filters.length && !filters.some((f) => e.id.includes(f))) continue;
@@ -161,8 +161,10 @@ for (const e of loadManifest()) {
     const base = { id: e.id, page: p, tool: e.tool, wires: page.segs.length / 4, nets: page.nets.length, comps: page.components.length, kinds };
     if (ws) {
       console.log(
-        `${label.padEnd(32)} ${e.tool.padEnd(7)} | ${pct(ws.wirePrecision)}    ${pct(ws.wireRecall)}    ${pct(ws.groupPrecision)}    ${pct(ws.groupRecall)}  ${pct(ws.netExact)}  ${pct(ws.naming)}  | ${pct(ws.refRecall)}   ${pct(ws.refPrecision)}`,
+        `${label.padEnd(32)} ${e.tool.padEnd(7)} | ${pct(ws.wirePrecision)}    ${pct(ws.wireRecall)}    ${pct(ws.groupPrecision)}    ${pct(ws.groupRecall)}  ${pct(ws.netExact)}  ${pct(ws.naming)}  | ${pct(ws.refRecall)}   ${pct(ws.refPrecision)}  ${pct(ws.valueExact)} | ${String(ws.phantomNames.length).padStart(3)}`,
       );
+      if (ws.phantomNames.length) console.log(`    노드가 아닌 이름: ${ws.phantomNames.slice(0, 10).join(", ")}`);
+      if (ws.wrongValues.length) console.log(`    값 틀림(${ws.wrongValues.length}): ${ws.wrongValues.slice(0, 6).join(", ")}`);
       if (ws.wrongNames.length) console.log(`    이름 틀림: ${ws.wrongNames.slice(0, 8).join(", ")}`);
       if (ws.missedRefs.length) console.log(`    놓친 부품: ${ws.missedRefs.slice(0, 10).join(", ")}`);
       if (ws.extraRefs.length) console.log(`    잘못 잡은 부품: ${ws.extraRefs.slice(0, 10).join(", ")}`);
@@ -188,6 +190,6 @@ const avg = (k: keyof WireScore) => {
 };
 if (scored.length)
   console.log(
-    `${"평균".padEnd(32)}         | ${pct(avg("wirePrecision"))}    ${pct(avg("wireRecall"))}    ${pct(avg("groupPrecision"))}    ${pct(avg("groupRecall"))}  ${pct(avg("netExact"))}  ${pct(avg("naming"))}  | ${pct(avg("refRecall"))}   ${pct(avg("refPrecision"))}`,
+    `${"평균".padEnd(32)}         | ${pct(avg("wirePrecision"))}    ${pct(avg("wireRecall"))}    ${pct(avg("groupPrecision"))}    ${pct(avg("groupRecall"))}  ${pct(avg("netExact"))}  ${pct(avg("naming"))}  | ${pct(avg("refRecall"))}   ${pct(avg("refPrecision"))}  ${pct(avg("valueExact"))} | ${String(scored.reduce((a, r) => a + r.phantomNames.length, 0)).padStart(3)}`,
   );
 fs.writeFileSync(path.join(outDir, "report.json"), JSON.stringify(rows, null, 1));

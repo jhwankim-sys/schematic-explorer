@@ -1,7 +1,7 @@
 // Compares an analysed page with ground truth.
 import type { SchPage } from "../../src/lib/schematic/analyze.ts";
 import { apply, type Transform } from "./align.ts";
-import type { GroundTruth } from "./groundtruth.ts";
+import { plainName as plainNameOf, type GroundTruth } from "./groundtruth.ts";
 
 export interface WireScore {
   /** share of detected wire length that lies on a real wire (글자선·테두리 오인식이 적을수록 높음) */
@@ -19,11 +19,16 @@ export interface WireScore {
   namedNets: number;
   refRecall: number;
   refPrecision: number;
+  /** share of detected parts (with a value printed on the sheet) listed with exactly that value first */
+  valueExact: number;
   gtNets: number;
   /** examples for the report */
   wrongNames: string[];
   missedRefs: string[];
   extraRefs: string[];
+  /** node names we list that no label / power symbol of the source carries (titles, pin names, values …) */
+  phantomNames: string[];
+  wrongValues: string[];
 }
 
 const TOL = 0.8;
@@ -162,6 +167,19 @@ export function scoreWires(page: SchPage, gt: GroundTruth, tf: Transform): WireS
   const ours = new Set(page.components.map((c) => c.ref));
   const hit = gtRefs.filter((r) => ours.has(r)).length;
   const gtSet = new Set(gt.refs);
+  // every name a wire can carry in the source (attached or not): anything else we list is not a net
+  const realNames = new Set(gt.labels.map((l) => plainNameOf(l.name).toUpperCase()));
+  const phantomNames = [...new Set(page.nets.map((n) => n.name).filter((n) => n && !realNames.has(n.toUpperCase())))];
+  // values: only parts we found and whose value is printed on the sheet as one text
+  let valueOk = 0, valueAll = 0;
+  const wrongValues: string[] = [];
+  for (const c of page.components) {
+    const want = gt.values[c.ref];
+    if (!want || !pdfStrings.has(want)) continue;
+    valueAll++;
+    if (c.values[0] === want) valueOk++;
+    else wrongValues.push(`${c.ref}: ${want}→${c.values[0] ?? "(없음)"}`);
+  }
   return {
     wirePrecision: total ? matched / total : 0,
     wireRecall: gtLen ? covered / gtLen : 0,
@@ -172,6 +190,9 @@ export function scoreWires(page: SchPage, gt: GroundTruth, tf: Transform): WireS
     namedNets: named,
     refRecall: gtRefs.length ? hit / gtRefs.length : NaN,
     refPrecision: ours.size ? [...ours].filter((r) => gtSet.has(r)).length / ours.size : NaN,
+    valueExact: valueAll ? valueOk / valueAll : NaN,
+    phantomNames,
+    wrongValues,
     gtNets: considered,
     wrongNames,
     missedRefs: gtRefs.filter((r) => !ours.has(r)).slice(0, 12),
