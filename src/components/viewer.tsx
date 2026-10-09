@@ -1,5 +1,5 @@
 import { useT } from "../i18n.tsx";
-import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
+import { memo, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import { Minus, Plus, Scan } from "lucide-react";
 import { Button, Spinner } from "./ui.tsx";
 import type { SchPage, SchText } from "../lib/schematic/analyze.ts";
@@ -35,6 +35,8 @@ interface Props {
   netIds: number[];
   /** text boxes outlined in the highlight colour (selected item's labels / reference) */
   focusTexts: SchText[];
+  /** the label the user is stepping through (drawn with a stronger ring) */
+  activeFocus?: SchText | null;
   /** search hits outlined in amber */
   matches: SchText[];
   activeMatch: number;
@@ -73,7 +75,8 @@ const BaseDrawing = memo(function BaseDrawing({ page }: { page: SchPage }) {
   );
 });
 
-export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, activeMatch, onPick, ref }: Props) {
+export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, matches, activeMatch, onPick, ref }: Props) {
+  const maskId = useId().replace(/:/g, "");
   const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -90,6 +93,10 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
   const stickyFit = useRef<{ box: Box | null; pad: number } | null>({ box: null, pad: 0.02 });
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const drag = useRef<{ id: number; sx: number; sy: number; vx: number; vy: number; moved: boolean } | null>(null);
+  /** touch points on the drawing (two of them pinch-zoom) */
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  /** pinch in progress: start distance / scale and the drawing point under the fingers' midpoint */
+  const pinch = useRef<{ d0: number; k0: number; ux: number; uy: number } | null>(null);
   const viewRef = useRef(view);
   const sizeRef = useRef(size);
   useEffect(() => {
@@ -158,7 +165,8 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const r = el.getBoundingClientRect();
-      zoomAt(Math.exp(e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+      // trackpad pinch arrives as ctrl+wheel with small steps
+      zoomAt(Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -248,9 +256,32 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
         onKeyDown={onKeyDown}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
+          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (pointers.current.size === 2) {
+            // second finger: pinch-zoom around the midpoint (no click comes out of it)
+            const [a, b] = [...pointers.current.values()];
+            const r = e.currentTarget.getBoundingClientRect();
+            const v = viewRef.current;
+            const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+            pinch.current = { d0: Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1), k0: v.k, ux: v.x + mx * v.k, uy: v.y + my * v.k };
+            drag.current = null;
+            stickyFit.current = null;
+            return;
+          }
+          if (pointers.current.size > 2) return;
           drag.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false };
         }}
         onPointerMove={(e) => {
+          if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          const pz = pinch.current;
+          if (pz && pointers.current.size >= 2) {
+            const [a, b] = [...pointers.current.values()];
+            const r = e.currentTarget.getBoundingClientRect();
+            const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+            const k = Math.min(Math.max((pz.k0 * pz.d0) / Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1), 0.004), 5);
+            setView({ x: pz.ux - mx * k, y: pz.uy - my * k, k });
+            return;
+          }
           const d = drag.current;
           if (!d || d.id !== e.pointerId) return;
           const dx = e.clientX - d.sx;
@@ -262,14 +293,33 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
           setView((v) => ({ ...v, x: d.vx - dx * k, y: d.vy - dy * k }));
         }}
         onPointerUp={(e) => {
+          pointers.current.delete(e.pointerId);
+          if (pinch.current) {
+            if (pointers.current.size < 2) pinch.current = null;
+            // the finger left on the glass keeps panning (and never counts as a tap)
+            const rest = [...pointers.current.entries()][0];
+            const v = viewRef.current;
+            drag.current = rest ? { id: rest[0], sx: rest[1].x, sy: rest[1].y, vx: v.x, vy: v.y, moved: true } : null;
+            return;
+          }
           const d = drag.current;
           drag.current = null;
-          if (!d || d.moved) return;
+          if (!d || d.moved || d.id !== e.pointerId) return;
           const r = e.currentTarget.getBoundingClientRect();
           const v = viewRef.current;
-          onPick(v.x + (e.clientX - r.left) * v.k, v.y + (e.clientY - r.top) * v.k, 5 * v.k);
+          // fingers are less precise than a mouse pointer
+          const tol = (e.pointerType === "touch" ? 9 : 5) * v.k;
+          onPick(v.x + (e.clientX - r.left) * v.k, v.y + (e.clientY - r.top) * v.k, tol);
         }}
-        onPointerCancel={() => (drag.current = null)}
+        onPointerCancel={(e) => {
+          pointers.current.delete(e.pointerId);
+          if (pointers.current.size < 2) pinch.current = null;
+          drag.current = null;
+        }}
+        onDoubleClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          zoomAt(e.shiftKey ? 2 : 0.5, e.clientX - r.left, e.clientY - r.top);
+        }}
       >
         {showPdf && (
           <canvas
@@ -304,17 +354,32 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
             </>
           )}
 
-          {/* while a node is selected the rest of the sheet is washed out so the highlight stands out */}
+          {/* while a node is selected the rest of the sheet is washed out; the node itself stays crisp */}
           {netD && (
-            <rect
-              className="net-dim"
-              x={0}
-              y={0}
-              width={page.width}
-              height={page.height}
-              fill={showPdf ? "#ffffff" : "var(--card)"}
-              fillOpacity={0.68}
-            />
+            <>
+              <defs>
+                <mask id={maskId} maskUnits="userSpaceOnUse" x={0} y={0} width={page.width} height={page.height}>
+                  <rect x={0} y={0} width={page.width} height={page.height} fill="#ffffff" />
+                  <path d={netD} fill="none" stroke="#000000" strokeWidth={14} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                  {netDots.map((d, i) => (
+                    <circle key={i} cx={d.x} cy={d.y} r={Math.max(d.r * 1.6, 6 * px)} fill="#000000" />
+                  ))}
+                  {focusTexts.map((t) => (
+                    <rect key={t.id} x={t.x0 - 3 * px} y={t.y0 - 3 * px} width={t.x1 - t.x0 + 6 * px} height={t.y1 - t.y0 + 6 * px} fill="#000000" />
+                  ))}
+                </mask>
+              </defs>
+              <rect
+                className="net-dim"
+                x={0}
+                y={0}
+                width={page.width}
+                height={page.height}
+                fill={showPdf ? "#ffffff" : "var(--card)"}
+                fillOpacity={0.72}
+                mask={`url(#${maskId})`}
+              />
+            </>
           )}
 
           {/* search hits */}
@@ -339,8 +404,8 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
                 d={netD}
                 fill="none"
                 stroke="var(--net-glow)"
-                strokeOpacity={0.55}
-                strokeWidth={11}
+                strokeOpacity={0.4}
+                strokeWidth={10}
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
               />
@@ -348,7 +413,7 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
                 d={netD}
                 fill="none"
                 stroke="var(--net-highlight)"
-                strokeWidth={2.8}
+                strokeWidth={2.2}
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
               />
@@ -370,6 +435,19 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, matches, active
               vectorEffect="non-scaling-stroke"
             />
           ))}
+          {activeFocus && (
+            <rect
+              className="focus-ping"
+              x={activeFocus.x0 - 6 * px}
+              y={activeFocus.y0 - 6 * px}
+              width={activeFocus.x1 - activeFocus.x0 + 12 * px}
+              height={activeFocus.y1 - activeFocus.y0 + 12 * px}
+              rx={4 * px}
+              fill="none"
+              strokeWidth={3}
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
         </svg>
       </div>
 
