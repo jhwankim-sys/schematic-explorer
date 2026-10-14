@@ -18,9 +18,9 @@ export function UploadHero({ onFile, onExample, busy }: { onFile: (f: File) => v
         <li><FileSearch aria-hidden="true" /><span><strong>{t("지원 형식")}</strong>{t("KiCad·OrCAD·Altium·Eagle 등에서 내보낸 벡터 PDF. 스캔·사진 PDF와 암호 걸린 PDF는 분석할 수 없습니다.", "Vector PDFs exported from KiCad, OrCAD, Altium, Eagle and similar. Scanned, photographed or password-protected PDFs cannot be analyzed.")}</span></li>
         <li><LockKeyhole aria-hidden="true" /><span><strong>{t("파일 저장")}</strong>{t("파일은 서버로 전송·저장되지 않고 이 브라우저 안에서만 처리되며, 창을 닫으면 사라집니다.", "Your file is never uploaded or stored on a server. It is processed in this browser only and is gone when you close the page.")}</span></li>
       </ul>
-      <div className="upload-zone"><FileUp size={32} aria-hidden="true" /><h2>{t("파일을 선택하거나 끌어다 놓으세요")}</h2>
-        <input ref={inputRef} type="file" accept="application/pdf,.pdf" className="sr-only" aria-label={t("회로도 PDF 파일 선택")} onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
-        <Button size="lg" onClick={() => inputRef.current?.click()} disabled={busy}>{t("PDF 파일 선택")}<ArrowRight aria-hidden="true" /></Button>
+      <div className="upload-zone" id="upload-zone" tabIndex={-1} role="group" aria-labelledby="upload-zone-title"><FileUp size={32} aria-hidden="true" /><h2 id="upload-zone-title">{t("파일을 선택하거나 끌어다 놓으세요")}</h2>
+        <input ref={inputRef} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-label={t("회로도 PDF 파일 선택")} onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
+        <Button size="lg" id="upload-pick" onClick={() => inputRef.current?.click()} disabled={busy}>{t("PDF 파일 선택")}<ArrowRight aria-hidden="true" /></Button>
         <Button variant="outline" onClick={onExample} disabled={busy}>{t("예제 회로도로 먼저 해 보기", "Try an example schematic")}</Button>
         <p>{t("예제: Olimex ESP32-PoE 공개 회로도 (Apache-2.0)", "Example: Olimex ESP32-PoE open-hardware schematic (Apache-2.0)")}</p>
       </div>
