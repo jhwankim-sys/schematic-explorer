@@ -2,6 +2,7 @@ import type { PageDef } from "./index.ts";
 
 export const faq: PageDef = {
   slug: "faq",
+  updated: "2026-10-13",
   related: ["guide", "help/formats", "privacy"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -19,7 +20,7 @@ export const faq: PageDef = {
 
 <h2>사용 환경</h2>
 <h3>요금이 있나요? 가입해야 하나요?</h3>
-<p>무료이며 가입이나 로그인이 필요 없습니다. 사이트 운영을 위해 페이지에 광고가 표시될 수 있습니다.</p>
+<p>무료이며 가입이나 로그인이 필요 없습니다. 현재는 광고가 없으며, 앞으로 운영 비용을 위해 광고를 도입할 수 있습니다.</p>
 <h3>어떤 브라우저에서 되나요?</h3>
 <p>최신 Chrome, Edge, Safari, Firefox에서 동작합니다. 설치할 프로그램은 없습니다. 오래된 브라우저에서는 PDF를 읽지 못하거나 도면이 그려지지 않을 수 있습니다.</p>
 <h3>휴대폰에서도 쓸 수 있나요?</h3>
@@ -62,7 +63,7 @@ export const faq: PageDef = {
 
 <h2>Requirements</h2>
 <h3>Does it cost anything? Do I need an account?</h3>
-<p>It is free and needs no sign-up or login. Ads may be shown on the site to cover running costs.</p>
+<p>It is free and needs no sign-up or login. There are no ads at the moment; ads may be introduced later to cover running costs.</p>
 <h3>Which browsers are supported?</h3>
 <p>Current versions of Chrome, Edge, Safari and Firefox. Nothing to install. Very old browsers may fail to read the PDF or draw it.</p>
 <h3>Does it work on a phone?</h3>
