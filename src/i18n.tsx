@@ -39,6 +39,7 @@ const english: Record<string, string> = {
   "무엇을 여나요": "What it opens", "지원 형식": "Supported files", "파일 저장": "Your file",
   "회로도 PDF를 열어 보세요": "Open your schematic PDF", "어떤 도구인가요": "What it does",
   "파일을 선택하거나 끌어다 놓으세요": "Choose a file or drag it here",
+  "파일 선택으로 건너뛰기": "Skip to file selection",
 };
 export function useT() {
   const language = useContext(LanguageContext);

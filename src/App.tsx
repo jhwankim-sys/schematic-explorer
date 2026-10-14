@@ -94,8 +94,27 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
   /** the PDF opened but holds no lines or text to analyze (a scan / photo): shown over the drawing */
   const [notice, setNotice] = useState<string | null>(null);
 
+  /** a second file arrived while one is still being read: it is refused, and a short note says so */
+  const [busyNote, setBusyNote] = useState(false);
+  const busyNoteTimer = useRef<number | undefined>(undefined);
+  const hideBusyNote = useCallback(() => {
+    window.clearTimeout(busyNoteTimer.current);
+    busyNoteTimer.current = undefined;
+    setBusyNote(false);
+  }, []);
+  useEffect(() => () => window.clearTimeout(busyNoteTimer.current), []);
+
   const openFile = useCallback(async (file: File, source: "picker" | "drop" | "example" = "picker") => {
-    if (loading.current) return;
+    if (loading.current) {
+      // keep the file being read; one note at a time, restarted on every refused request
+      window.clearTimeout(busyNoteTimer.current);
+      setBusyNote(true);
+      busyNoteTimer.current = window.setTimeout(() => {
+        busyNoteTimer.current = undefined;
+        setBusyNote(false);
+      }, 5000);
+      return;
+    }
     if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
       setError("PDF 파일만 열 수 있습니다. 회로도 프로그램에서 PDF로 내보낸 파일을 선택해 주세요.");
       track({ name: "error", params: { type: "not_pdf" } });
@@ -140,8 +159,9 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
     } finally {
       loading.current = false;
       setBusy(null);
+      hideBusyNote();
     }
-  }, []);
+  }, [hideBusyNote]);
 
   /** open the bundled public example (Olimex ESP32-PoE, Apache-2.0) */
   const openExample = useCallback(async () => {
@@ -556,10 +576,18 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
   return (
     <div className="viewer-app relative flex h-full min-h-0 flex-col bg-background">
       <a
-        href="#drawing"
+        href={doc && page ? "#drawing" : "#upload-pick"}
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-sm focus:bg-popover focus:px-3 focus:py-2 focus:shadow"
+        onClick={(e) => {
+          // move focus only: changing the hash would switch the page route
+          e.preventDefault();
+          const pick = document.getElementById("upload-pick") as HTMLButtonElement | null;
+          const target =
+            document.getElementById("drawing") ?? (pick && !pick.disabled ? pick : document.getElementById("upload-zone"));
+          target?.focus();
+        }}
       >
-        {t("도면으로 건너뛰기")}
+        {t(doc && page ? "도면으로 건너뛰기" : "파일 선택으로 건너뛰기")}
       </a>
       <header
         className={cn(
@@ -604,6 +632,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
                 type="file"
                 accept="application/pdf,.pdf"
                 className="sr-only"
+                tabIndex={-1}
                 aria-label={t("다른 회로도 PDF 선택")}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -749,6 +778,14 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
               </div>
             </div>
           )}
+
+          <div role="status" aria-live="polite" className="busy-note-region pointer-events-none absolute inset-x-3 top-3 z-20 flex justify-center">
+            {busyNote && (
+              <p className="busy-note rounded-md border border-border bg-popover px-4 py-2 text-sm shadow-md">
+                {t("읽는 중에는 다른 파일을 열 수 없습니다. 끝난 뒤 다시 열어 주세요.", "Another file can't be opened while this one is being read. Try again when it's done.")}
+              </p>
+            )}
+          </div>
         </section>
       </main>
       <footer className="viewer-status" hidden={!layout.side || layout.compact}><span className="status-dot" />{t("파일은 브라우저 안에서만 분석됩니다.")}<span>{t("휠: 확대·축소 · 드래그: 이동")}</span></footer>
