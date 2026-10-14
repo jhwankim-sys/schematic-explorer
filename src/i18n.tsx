@@ -37,6 +37,8 @@ const english: Record<string, string> = {
   "이 PDF에는 선과 글자 정보가 없어 연결을 분석할 수 없습니다. 스캔하거나 이미지로 저장한 PDF로 보입니다. 도면은 볼 수 있으며, 회로도 프로그램에서 PDF로 다시 내보내면 분석할 수 있습니다.": "This PDF has no line or text data, so its connections can't be analyzed. It looks like a scan or an image saved as PDF. You can still view the drawing; export the PDF again from your schematic program to analyze it.",
   "예제 파일을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.": "Couldn't load the example file. Check your internet connection and try again.",
   "무엇을 여나요": "What it opens", "지원 형식": "Supported files", "파일 저장": "Your file",
+  "회로도 PDF를 열어 보세요": "Open your schematic PDF", "어떤 도구인가요": "What it does",
+  "파일을 선택하거나 끌어다 놓으세요": "Choose a file or drag it here",
 };
 export function useT() {
   const language = useContext(LanguageContext);
