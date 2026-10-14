@@ -25,7 +25,9 @@ const config: SiteConfig = JSON.parse(fs.readFileSync(path.join(ROOT, "site.conf
 const SITE = config.siteUrl.replace(/\/+$/, "");
 const GA_ID = /^G-[A-Z0-9]+$/.test(config.ga4MeasurementId) ? config.ga4MeasurementId : "";
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(config.contactEmail) ? config.contactEmail : "";
+/** "last updated" for pages that do not set their own date (when the pages were first written) */
 const UPDATED = "2026-10-09";
+const updatedOf = (page: PageDef) => page.updated ?? UPDATED;
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const pathOf = (lang: Lang, slug: string) => (lang === "en" ? `/en/${slug}/` : `/${slug}/`);
 
@@ -80,7 +82,7 @@ function render(page: PageDef, lang: Lang): string {
     tool: (hash = "#viewer") => `/${lang === "en" ? "?lang=en" : "?lang=ko"}${hash}`,
     email: EMAIL,
     analytics: !!GA_ID,
-    updated: UPDATED,
+    updated: updatedOf(page),
   };
   const c = page.content(ctx);
   const url = SITE + pathOf(lang, page.slug);
@@ -125,7 +127,7 @@ ${verificationMeta()}${gaSnippet()}
 <article>
 <h1>${esc(c.title)}</h1>
 <p class="lead">${c.lead ?? esc(c.description)}</p>
-<p class="meta">${ui.updated}: ${UPDATED}</p>
+<p class="meta">${ui.updated}: ${updatedOf(page)}</p>
 ${c.body}
 </article>
 ${page.cta === false ? "" : `<aside class="cta"><div><strong>${ui.cta}</strong><p>${ui.ctaNote}</p></div><div class="cta-actions"><a class="button" href="${ctx.tool()}">${ui.open}</a><a class="button ghost" href="${ctx.tool("#example")}">${ui.example}</a></div></aside>`}
@@ -145,11 +147,12 @@ function write(rel: string, text: string) {
 
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 write("pages.css", PAGES_CSS);
-const urls: { loc: string; alt?: Record<Lang, string> }[] = [{ loc: SITE + "/" }];
+const urls: { loc: string; lastmod?: string; alt?: Record<Lang, string> }[] = [{ loc: SITE + "/" }];
 for (const page of pages) {
   for (const lang of ["ko", "en"] as const) write(path.join(pathOf(lang, page.slug), "index.html"), render(page, lang));
-  urls.push({ loc: SITE + pathOf("ko", page.slug), alt: { ko: SITE + pathOf("ko", page.slug), en: SITE + pathOf("en", page.slug) } });
-  urls.push({ loc: SITE + pathOf("en", page.slug), alt: { ko: SITE + pathOf("ko", page.slug), en: SITE + pathOf("en", page.slug) } });
+  const alt = { ko: SITE + pathOf("ko", page.slug), en: SITE + pathOf("en", page.slug) };
+  urls.push({ loc: SITE + pathOf("ko", page.slug), lastmod: updatedOf(page), alt });
+  urls.push({ loc: SITE + pathOf("en", page.slug), lastmod: updatedOf(page), alt });
 }
 
 write(
@@ -158,7 +161,7 @@ write(
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls
   .map(
-    (u) => `  <url><loc>${u.loc}</loc><lastmod>${UPDATED}</lastmod>${u.alt ? (["ko", "en"] as const).map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${u.alt![l]}"/>`).join("") : ""}</url>`,
+    (u) => `  <url><loc>${u.loc}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ""}${u.alt ? (["ko", "en"] as const).map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${u.alt![l]}"/>`).join("") : ""}</url>`,
   )
   .join("\n")}
 </urlset>

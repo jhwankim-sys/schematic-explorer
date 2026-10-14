@@ -2,6 +2,7 @@ import type { PageDef } from "./index.ts";
 
 export const about: PageDef = {
   slug: "about",
+  updated: "2026-10-13",
   related: ["guide", "faq", "contact"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -33,7 +34,7 @@ export const about: PageDef = {
 
 <h2>누가 만들었나요</h2>
 <p>전자 회로를 다루는 개인 개발자가 운영합니다. 사이트는 GitHub Pages에서 정적 파일로 제공됩니다. 서버에서 실행되는 프로그램이나 데이터베이스는 없습니다.</p>
-<p>사이트 운영 비용을 위해 광고를 게재할 수 있습니다. 광고는 도구의 기능이나 파일 처리 방식에 영향을 주지 않으며, 광고와 관련된 쿠키는 <a href="${href("privacy")}">개인정보처리방침</a>에 설명되어 있습니다.</p>
+<p>현재 사이트에는 광고가 없습니다. 운영 비용을 위해 앞으로 광고를 도입할 수 있으며, 그때는 시작하기 전에 관련 쿠키와 처리하는 정보를 <a href="${href("privacy")}">개인정보처리방침</a>에 먼저 공개합니다.</p>
 
 <h2>시작하기</h2>
 <p><a href="${tool()}">회로도 PDF 열기</a>로 바로 시작하거나, <a href="${tool("#example")}">예제 회로도</a>로 먼저 체험해 보세요. 처음이라면 <a href="${href("guide")}">사용법 가이드</a>를 추천합니다. 의견이나 오류 제보는 <a href="${href("contact")}">문의</a> 페이지로 보내 주세요.</p>
@@ -67,7 +68,7 @@ export const about: PageDef = {
 
 <h2>Who runs it</h2>
 <p>An individual developer who works with electronics. The site is served as static files from GitHub Pages — there is no server-side program or database.</p>
-<p>Ads may be shown to cover running costs. They do not affect the tool's features or how files are handled; related cookies are explained in the <a href="${href("privacy")}">privacy policy</a>.</p>
+<p>The site currently shows no ads. Ads may be introduced later to cover running costs; if so, the cookies and information involved will be described in the <a href="${href("privacy")}">privacy policy</a> before they start.</p>
 
 <h2>Get started</h2>
 <p><a href="${tool()}">Open a schematic PDF</a>, or try the <a href="${tool("#example")}">example schematic</a> first. New users may like the <a href="${href("guide")}">guide</a>. Feedback and bug reports are welcome on the <a href="${href("contact")}">contact page</a>.</p>

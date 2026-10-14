@@ -1,14 +1,18 @@
 import type { PageDef } from "./index.ts";
 
+/** the date this policy first took effect; a revision does not change it */
 const EFFECTIVE = "2026-10-09";
 
 // Keep every statement here true to what the site actually does.
 // The analytics section switches automatically with site.config.json (ga4MeasurementId).
 export const privacy: PageDef = {
   slug: "privacy",
+  // last revision: section 4 rewritten to match the site (no ads, no consent banner yet).
+  // The same date is shown at the top as "last updated" and below as "last revised".
+  updated: "2026-10-13",
   cta: false,
   related: ["terms", "contact", "faq"],
-  content: ({ lang, href, email, analytics }) => {
+  content: ({ lang, href, email, analytics, updated }) => {
     const reach = email ? `<a href="mailto:${email}">${email}</a>` : "";
     if (lang === "ko") {
       const ga = analytics
@@ -46,7 +50,7 @@ export const privacy: PageDef = {
 <tr><td>접속 기록(IP 주소, 요청한 주소, 시간, 브라우저 정보)</td><td>호스팅 사업자 GitHub(GitHub Pages)가 서비스 제공과 보안을 위해 자동으로 기록합니다. 운영자는 이 기록을 받아 보거나 이용하지 않습니다.</td><td><a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub 개인정보 처리방침</a>에 따름</td></tr>
 <tr><td>언어 설정</td><td>선택한 언어(한국어/English)를 다음 방문 때 유지하려고 이용자 브라우저의 localStorage에 저장합니다. 서버로 전송되지 않습니다.</td><td>이용자가 브라우저 데이터를 지울 때까지</td></tr>
 <tr><td>방문 통계</td><td>아래 3항 참고</td><td>Google 정책에 따름</td></tr>
-<tr><td>광고 관련 정보</td><td>아래 4항 참고</td><td>Google 정책에 따름</td></tr>
+<tr><td>광고 관련 정보</td><td>현재 광고가 없어 처리하지 않습니다(아래 4항).</td><td>해당 없음</td></tr>
 <tr><td>문의 내용(이메일 주소, 보낸 내용)</td><td>이용자가 이메일로 연락한 경우 답변을 위해서만 사용합니다.</td><td>답변 완료 후 1년 이내 삭제</td></tr>
 </tbody>
 </table>
@@ -55,15 +59,9 @@ export const privacy: PageDef = {
 ${ga}
 
 <h2>4. 광고와 쿠키</h2>
-<p>사이트는 운영 비용을 위해 <strong>Google AdSense</strong> 광고를 게재할 수 있습니다.</p>
-<ul>
-<li>Google을 포함한 제3자 광고 사업자는 쿠키를 사용해 이용자가 이 사이트나 다른 사이트를 방문한 기록을 바탕으로 광고를 게재합니다.</li>
-<li>Google은 광고 쿠키를 사용해 이용자가 이 사이트 및 인터넷의 다른 사이트를 방문한 기록에 따라 Google과 파트너가 광고를 게재할 수 있게 합니다.</li>
-<li>이용자는 <a href="https://myadcenter.google.com/">Google 내 광고 센터</a>에서 맞춤 광고를 끌 수 있으며, <a href="https://www.aboutads.info/choices/">www.aboutads.info</a>에서 다른 제3자 사업자의 맞춤 광고 쿠키를 거부할 수 있습니다.</li>
-<li>Google이 파트너 사이트에서 정보를 사용하는 방식은 <a href="https://policies.google.com/technologies/partner-sites">Google 파트너 사이트 정책</a>에서 볼 수 있습니다.</li>
-<li>유럽경제지역(EEA)·영국·스위스 이용자에게는 Google의 동의 관리 절차에 따라 광고 쿠키 사용 전 동의를 받습니다.</li>
-</ul>
-<p>광고는 회로도 파일에 접근할 수 없으며, 파일 내용은 광고에 쓰이지 않습니다.</p>
+<p>현재 이 사이트에는 <strong>광고가 없습니다.</strong> 광고 스크립트를 불러오지 않으며, 광고 쿠키에 대한 동의 창도 없습니다.</p>
+<p>운영 비용을 위해 앞으로 Google AdSense 같은 광고를 도입할 수 있습니다. 도입한다면 시작하기 전에 이 방침에 광고 사업자, 사용하는 쿠키, 처리하는 정보를 먼저 공개하고, 유럽경제지역(EEA)·영국·스위스 이용자에게는 광고 쿠키를 쓰기 전에 동의를 받는 절차를 갖춥니다.</p>
+${analytics ? `<p>위 3항의 방문 통계(Google Analytics)는 이미 사용하고 있으며, 첫 방문 때부터 불러옵니다. 현재 통계 쿠키에 대한 별도의 동의 창은 없습니다. 원하지 않으면 아래 5항의 방법이나 3항의 차단 부가기능을 이용해 주세요.</p>` : ""}
 
 <h2>5. 쿠키를 거부하는 방법</h2>
 <p>브라우저 설정에서 쿠키를 차단하거나 삭제할 수 있습니다(예: Chrome 설정 → 개인정보 및 보안 → 서드 파티 쿠키). 쿠키를 차단해도 회로도 보기 기능은 그대로 쓸 수 있습니다.</p>
@@ -83,7 +81,7 @@ ${ga}
 
 <h2>9. 방침의 변경</h2>
 <p>이 방침을 바꾸면 이 페이지에 바뀐 내용과 시행일을 게시합니다.</p>
-<p>시행일: ${EFFECTIVE}</p>
+<p>처음 시행: ${EFFECTIVE} · 최근 개정: ${updated}(4항 광고와 쿠키를 현재 운영 상태에 맞게 고침)</p>
 `,
       };
     }
@@ -122,7 +120,7 @@ ${ga}
 <tr><td>Access logs (IP address, requested URL, time, browser)</td><td>Recorded automatically by the host, GitHub (GitHub Pages), to provide and secure the service. The operator does not receive or use these logs.</td><td>Per the <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy statement</a></td></tr>
 <tr><td>Language setting</td><td>Your chosen language (Korean/English) is kept in your browser's localStorage so it is remembered next time. It is not sent anywhere.</td><td>Until you clear browser data</td></tr>
 <tr><td>Visitor statistics</td><td>See section 3</td><td>Per Google's policies</td></tr>
-<tr><td>Advertising data</td><td>See section 4</td><td>Per Google's policies</td></tr>
+<tr><td>Advertising data</td><td>None — the site currently has no ads (section 4).</td><td>Not applicable</td></tr>
 <tr><td>Messages you send (email address, content)</td><td>Used only to reply when you contact us by email.</td><td>Deleted within one year after the reply</td></tr>
 </tbody>
 </table>
@@ -131,15 +129,9 @@ ${ga}
 ${ga}
 
 <h2>4. Advertising and cookies</h2>
-<p>The site may show <strong>Google AdSense</strong> ads to cover running costs.</p>
-<ul>
-<li>Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this site or other websites.</li>
-<li>Google's use of advertising cookies enables it and its partners to serve ads based on your visits to this site and/or other sites on the Internet.</li>
-<li>You can turn off personalized advertising in <a href="https://myadcenter.google.com/">Google My Ad Center</a>, and opt out of other vendors' personalized-advertising cookies at <a href="https://www.aboutads.info/choices/">www.aboutads.info</a>.</li>
-<li>How Google uses information from partner sites: <a href="https://policies.google.com/technologies/partner-sites">policies.google.com/technologies/partner-sites</a>.</li>
-<li>Visitors in the EEA, the UK and Switzerland are asked for consent before advertising cookies are used, through Google's consent management.</li>
-</ul>
-<p>Ads have no access to your schematic files, and file contents are never used for advertising.</p>
+<p>The site <strong>currently shows no ads.</strong> It loads no advertising scripts and has no consent banner for advertising cookies.</p>
+<p>Ads such as Google AdSense may be introduced later to cover running costs. Before that happens, this policy will first name the advertising providers, the cookies used and the information processed, and a way to ask visitors in the EEA, the UK and Switzerland for consent before advertising cookies are used will be in place.</p>
+${analytics ? `<p>The visitor statistics in section 3 (Google Analytics) are already in use and load from your first visit. There is currently no separate consent banner for these statistics cookies. To opt out, use the methods in section 5 or the add-on mentioned in section 3.</p>` : ""}
 
 <h2>5. Refusing cookies</h2>
 <p>You can block or delete cookies in your browser settings (for example Chrome: Settings → Privacy and security → Third-party cookies). Viewing schematics keeps working with cookies blocked.</p>
@@ -158,7 +150,7 @@ ${ga}
 
 <h2>9. Changes</h2>
 <p>If this policy changes, the changes and their effective date will be posted on this page.</p>
-<p>Effective: ${EFFECTIVE}</p>
+<p>First effective: ${EFFECTIVE} · Last revised: ${updated} (section 4, advertising and cookies, corrected to how the site runs today)</p>
 `,
     };
   },

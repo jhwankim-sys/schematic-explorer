@@ -24,7 +24,7 @@ export interface Ctx {
   email: string;
   /** GA4 is configured (the privacy text changes with it) */
   analytics: boolean;
-  /** date shown as "last updated" */
+  /** this page's "last updated" date (its own text changes; also the sitemap lastmod) */
   updated: string;
 }
 
@@ -39,6 +39,12 @@ export interface PageContent {
 
 export interface PageDef {
   slug: string;
+  /**
+   * YYYY-MM-DD of the last change to this page's own text. Shown as "last updated" and used as the
+   * sitemap lastmod. Leave it out when the page has not changed since the site-wide date.
+   * Set it only when the text of this page changes (not for site releases).
+   */
+  updated?: string;
   related?: string[];
   /** show the "open the tool" box under the article (default true) */
   cta?: boolean;
