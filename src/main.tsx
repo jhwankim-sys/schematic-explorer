@@ -109,7 +109,7 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
         </section>
       </div>
     </main><footer className="site-footer"><a className="brand" href="#home"><CircuitBoard size={20} /><span>Schematic <strong>Viewer</strong></span></a><span>© 2026 Schematic Viewer</span><div>
-      <a href={href("/about/")}>{t("소개", "About")}</a><a href={href("/contact/")}>{t("문의", "Contact")}</a><a href={href("/privacy/")}>{t("개인정보처리방침", "Privacy policy")}</a><a href={href("/terms/")}>{t("이용약관", "Terms of use")}</a>
+      <a href={href("/about/")}>{t("소개", "About")}</a><a href={href("/contact/")}>{t("문의", "Contact")}</a><a href={href("/privacy/")}>{t("개인정보처리방침", "Privacy policy")}</a><a href={href("/terms/")}>{t("이용약관", "Terms of use")}</a><a href={href("/changelog/")}>{t("업데이트 기록", "Changelog")}</a>
     </div></footer></>}
   </div>;
 }
