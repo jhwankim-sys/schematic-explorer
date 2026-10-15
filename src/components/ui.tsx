@@ -1,5 +1,5 @@
 // Minimal UI primitives used by the app. No external UI library required.
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, Ref } from "react";
 import { Loader2 } from "lucide-react";
 
 export function cn(...c: Array<string | false | null | undefined>) {
@@ -27,12 +27,13 @@ export function Button({
   className,
   type = "button",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; ref?: Ref<HTMLButtonElement> }) {
   return (
     <button
       type={type}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors",
+        // "tap": at least 44px on touch screens (index.css)
+        "tap inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         "[&_svg]:size-4 [&_svg]:shrink-0",
         variantCls[variant],
@@ -48,7 +49,8 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "h-9 w-full min-w-0 rounded-md border border-border bg-transparent px-3 text-sm outline-none",
+        // 16px text on touch screens: iOS Safari zooms the page into smaller inputs
+        "h-9 w-full min-w-0 rounded-md border border-border bg-transparent px-3 text-sm outline-none pointer-coarse:h-11 pointer-coarse:text-base",
         "placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
@@ -75,14 +77,17 @@ export function TabStrip<T extends string>({
   value,
   onChange,
   idPrefix,
+  className,
 }: {
   tabs: { value: T; label: ReactNode }[];
   value: T;
   onChange: (v: T) => void;
   idPrefix: string;
+  /** e.g. a tighter padding on short side panels */
+  className?: string;
 }) {
   return (
-    <div role="tablist" className="mx-3 mt-3 grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
+    <div role="tablist" className={cn("grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-md bg-muted", className ?? "p-1")}>
       {tabs.map((t, i) => {
         const active = t.value === value;
         return (
@@ -102,7 +107,7 @@ export function TabStrip<T extends string>({
               document.getElementById(`${idPrefix}-tab-${n.value}`)?.focus();
             }}
             className={cn(
-              "inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-2 py-1 text-sm font-medium [&_svg]:size-4",
+              "tap-row inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-2 py-1 text-sm font-medium [&_svg]:size-4",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}

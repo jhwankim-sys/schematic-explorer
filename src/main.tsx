@@ -1,7 +1,7 @@
 import "./lib/polyfills.ts";
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ArrowRight, CircuitBoard, LockKeyhole, FileSearch, Waypoints } from "lucide-react";
+import { ArrowRight, Check, CircuitBoard, LockKeyhole, FileSearch, Globe, Waypoints } from "lucide-react";
 import "./index.css";
 import { App } from "./App.tsx";
 import { CircuitArtwork } from "./components/circuit-artwork.tsx";
@@ -62,14 +62,16 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
     ["/faq/", t("자주 묻는 질문", "FAQ"), t("파일 보안, 정확도, 모바일 사용, 비용에 대한 질문과 답.", "Questions about file privacy, accuracy, mobile use and cost.")],
   ] as const;
   const languageSwitch = <div className="language-switch" role="group" aria-label={t("언어 선택", "Language")}><button type="button" aria-pressed={language === "ko"} onClick={() => onLanguage("ko")}>한국어</button><button type="button" aria-pressed={language === "en"} onClick={() => onLanguage("en")}>EN</button></div>;
+  // the workspace toolbar: the same switch, or a small menu when the toolbar is narrow (index.css)
+  const workspaceLanguage = <><div className="lang-wide">{languageSwitch}</div><LanguageMenu language={language} onLanguage={onLanguage} /></>;
   // the workspace has a single header row: the brand and language switch move into the viewer toolbar
-  const workspaceBrand = <a className="brand" href="#home" aria-label={`Schematic Viewer · ${t("홈으로")}`}><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>;
+  const workspaceBrand = <a className="brand tap" href="#home" aria-label={`Schematic Viewer · ${t("홈으로")}`}><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>;
   return <div className={viewer ? "site-shell workspace-shell" : "site-shell"}>
     <header className="site-header" hidden={viewer}><a className="brand" href="#home"><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>
       <nav aria-label={t("사이트 메뉴", "Site navigation")}><a href={href("/guide/")}>{t("사용법", "Guide")}</a><a href={href("/faq/")}>FAQ</a><a href={href("/about/")}>{t("소개", "About")}</a><a href={href("/contact/")}>{t("문의", "Contact")}</a></nav>
       <div className="header-actions">{languageSwitch}<a className="header-start" href="#viewer">{t("시작하기", "Get started")}<ArrowRight size={15} aria-hidden="true" /></a></div>
     </header>
-    <div className="workspace" hidden={!viewer}><App active={viewer} autoExample={route === "#example"} headerStart={workspaceBrand} headerEnd={languageSwitch} /></div>
+    <div className="workspace" hidden={!viewer}><App active={viewer} autoExample={route === "#example"} headerStart={workspaceBrand} headerEnd={workspaceLanguage} /></div>
     {!viewer && <><main id="home">
       <section className="landing-hero" aria-labelledby="welcome"><div className="hero-layout"><div className="hero-copy">
         <p className="eyebrow">SCHEMATIC VIEWER / BROWSER WORKSPACE</p><h1 id="welcome">{t("복잡한 회로도,", "Complex schematics.")}<br /><span>{t("연결은 클릭 한 번으로.", "Clear connections.")}</span></h1>
@@ -98,6 +100,55 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
     </main><footer className="site-footer"><a className="brand" href="#home"><CircuitBoard size={20} /><span>Schematic <strong>Viewer</strong></span></a><span>© 2026 Schematic Viewer</span><div>
       <a href={href("/about/")}>{t("소개", "About")}</a><a href={href("/contact/")}>{t("문의", "Contact")}</a><a href={href("/privacy/")}>{t("개인정보처리방침", "Privacy policy")}</a><a href={href("/terms/")}>{t("이용약관", "Terms of use")}</a>
     </div></footer></>}
+  </div>;
+}
+
+const LANGUAGES: { code: Language; label: string; short: string }[] = [
+  { code: "ko", label: "한국어", short: "KO" },
+  { code: "en", label: "English", short: "EN" },
+];
+
+/**
+ * Language menu for a narrow workspace toolbar (shown instead of the two-button switch there, so the
+ * page controls and 44px buttons fit in one row). Menu button pattern: Enter / Space / ArrowDown
+ * open it and focus the current language, arrows move, Esc closes and returns focus, Tab leaves.
+ */
+function LanguageMenu({ language, onLanguage }: { language: Language; onLanguage: (language: Language) => void }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const listId = useId();
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => { if (!boxRef.current?.contains(e.target as Node)) setOpen(false); };
+    window.addEventListener("pointerdown", away);
+    // move focus to the checked item once the list is shown
+    boxRef.current?.querySelector<HTMLButtonElement>("[role=menuitemradio][aria-checked=true]")?.focus();
+    return () => window.removeEventListener("pointerdown", away);
+  }, [open]);
+  const current = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
+  const items = () => [...(boxRef.current?.querySelectorAll<HTMLButtonElement>("[role=menuitemradio]") ?? [])];
+  return <div className="lang-menu" ref={boxRef}
+    onKeyDown={(e) => {
+      if (!open) return;
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setOpen(false); buttonRef.current?.focus(); }
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const list = items(); const i = list.indexOf(document.activeElement as HTMLButtonElement);
+        list[(i + (e.key === "ArrowDown" ? 1 : list.length - 1)) % list.length]?.focus();
+      }
+    }}
+    onBlur={(e) => { if (open && !boxRef.current?.contains(e.relatedTarget as Node)) setOpen(false); }}>
+    <button ref={buttonRef} type="button" className="tap lang-menu-button" aria-haspopup="menu" aria-expanded={open} aria-controls={open ? listId : undefined}
+      aria-label={`${t("언어 선택", "Language")}: ${current.label}`}
+      onClick={() => setOpen((o) => !o)}
+      onKeyDown={(e) => { if (e.key === "ArrowDown" && !open) { e.preventDefault(); setOpen(true); } }}>
+      <Globe aria-hidden="true" /><span aria-hidden="true">{current.short}</span>
+    </button>
+    {open && <div role="menu" id={listId} aria-label={t("언어 선택", "Language")} className="lang-menu-list">{LANGUAGES.map((l) =>
+      <button key={l.code} type="button" role="menuitemradio" lang={l.code} aria-checked={language === l.code} className="tap-row"
+        onClick={() => { setOpen(false); onLanguage(l.code); buttonRef.current?.focus(); }}>{l.label}{language === l.code && <Check aria-hidden="true" />}</button>)}</div>}
   </div>;
 }
 

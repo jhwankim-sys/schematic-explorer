@@ -2,6 +2,7 @@ import type { PageDef } from "./index.ts";
 
 export const findParts: PageDef = {
   slug: "learn/find-parts",
+  updated: "2026-10-13",
   related: ["learn/read-schematic", "guide", "learn/example"],
   content: ({ lang, href }) =>
     lang === "ko"
@@ -43,7 +44,7 @@ export const findParts: PageDef = {
 <li><strong>참조 번호로</strong>: 검색창에 <code>C37</code>을 입력합니다. 정확히 일치하는 C37이 C370 같은 비슷한 이름보다 먼저 나오고, Enter 없이 그 위치로 이동합니다. <em>부품</em> 탭에서 C37을 눌러도 됩니다.</li>
 <li><strong>값으로</strong>: <code>10k</code>나 <code>104</code>처럼 값을 검색하면 그 값이 적힌 모든 위치가 표시됩니다. 표시줄의 개수를 보면 같은 값 부품이 몇 개인지 대략 알 수 있습니다.</li>
 <li><strong>도면에서</strong>: 도면의 참조 번호 글자를 누르면 그 부품이 선택되고, 목록이 <em>부품</em> 탭으로 바뀝니다.</li>
-<li><strong>목록으로 정리</strong>: <em>부품</em> 탭의 <strong>부품 목록 CSV</strong>로 참조 번호·값·페이지를 저장한 뒤, 엑셀에서 값으로 정렬하면 간이 BOM이 됩니다.</li>
+<li><strong>목록으로 정리</strong>: 탭 옆 <strong>⋯</strong> 메뉴의 <strong>부품 목록 CSV</strong>로 참조 번호·값·페이지를 저장한 뒤, 엑셀에서 값으로 정렬하면 간이 BOM이 됩니다.</li>
 </ol>
 
 <h2>값이 비어 있거나 다를 때</h2>
@@ -89,7 +90,7 @@ export const findParts: PageDef = {
 <li><strong>By reference</strong>: type <code>C37</code>. The exact C37 comes before look-alikes such as C370, and the view jumps there without pressing Enter. Or pick C37 in the <em>Parts</em> tab.</li>
 <li><strong>By value</strong>: search <code>10k</code> or <code>104</code> to mark every place that value is written; the count in the search bar gives a rough number of parts with that value.</li>
 <li><strong>On the drawing</strong>: click a reference on the drawing to select the part; the list switches to the <em>Parts</em> tab.</li>
-<li><strong>As a list</strong>: save references, values and pages with <strong>Parts CSV</strong>, then sort by value in a spreadsheet for a quick BOM.</li>
+<li><strong>As a list</strong>: save references, values and pages with <strong>Parts CSV</strong> in the <strong>⋯</strong> menu beside the tabs, then sort by value in a spreadsheet for a quick BOM.</li>
 </ol>
 
 <h2>When a value is missing or different</h2>

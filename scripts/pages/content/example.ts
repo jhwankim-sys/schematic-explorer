@@ -4,6 +4,7 @@ import type { PageDef } from "./index.ts";
 // Re-check them when the analysis engine changes.
 export const example: PageDef = {
   slug: "learn/example",
+  updated: "2026-10-13",
   related: ["guide", "learn/find-parts", "learn/read-schematic"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -46,8 +47,8 @@ export const example: PageDef = {
 
 <h2>5단계: 목록 저장하기</h2>
 <ol class="steps">
-<li>검색창을 비운 뒤 <em>부품</em> 탭에서 <strong>부품 목록 CSV</strong>를 누르면 129개 부품의 참조 번호·값·페이지가 담긴 CSV가 저장됩니다.</li>
-<li><em>노드</em> 탭에서 <strong>노드 목록 CSV</strong>를 누르면 40개 노드의 이름·종류·라벨 수가 저장됩니다. 엑셀에서 열어 정렬하거나 BOM과 대조하는 데 쓸 수 있습니다.</li>
+<li>검색창을 비운 뒤 탭 옆의 <strong>⋯</strong> 메뉴에서 <strong>부품 목록 CSV</strong>를 고르면 129개 부품의 참조 번호·값·페이지가 담긴 CSV가 저장됩니다.</li>
+<li>같은 메뉴의 <strong>노드 목록 CSV</strong>를 고르면 40개 노드의 이름·종류·라벨 수가 저장됩니다. 엑셀에서 열어 정렬하거나 BOM과 대조하는 데 쓸 수 있습니다.</li>
 </ol>
 
 <h2>정리</h2>
@@ -93,8 +94,8 @@ export const example: PageDef = {
 
 <h2>Step 5: save the lists</h2>
 <ol class="steps">
-<li>Clear the search, then choose <strong>Parts CSV</strong> in the <em>Parts</em> tab to save references, values and pages for all 129 parts.</li>
-<li><strong>Nets CSV</strong> in the <em>Nets</em> tab saves the 40 nets with their type and label count — handy for sorting in a spreadsheet or checking against a BOM.</li>
+<li>Clear the search, then choose <strong>Parts CSV</strong> in the <strong>⋯</strong> menu beside the tabs to save references, values and pages for all 129 parts.</li>
+<li><strong>Nets CSV</strong> in the same menu saves the 40 nets with their type and label count — handy for sorting in a spreadsheet or checking against a BOM.</li>
 </ol>
 
 <h2>Wrap-up</h2>

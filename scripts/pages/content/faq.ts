@@ -24,7 +24,7 @@ export const faq: PageDef = {
 <h3>어떤 브라우저에서 되나요?</h3>
 <p>최신 Chrome, Edge, Safari, Firefox에서 동작합니다. 설치할 프로그램은 없습니다. 오래된 브라우저에서는 PDF를 읽지 못하거나 도면이 그려지지 않을 수 있습니다.</p>
 <h3>휴대폰에서도 쓸 수 있나요?</h3>
-<p>네. 두 손가락으로 확대·축소하고, 한 손가락으로 끌어 이동합니다. 세로 화면에서는 목록이 아래쪽 패널로, 가로 화면에서는 옆 패널로 바뀝니다. 다만 큰 도면은 화면이 넓은 컴퓨터에서 보는 편이 편합니다. 휴대폰 사용법은 <a href="${href("guide")}">사용법</a>의 "휴대폰에서 쓰기"를 참고하세요.</p>
+<p>네. 두 손가락으로 확대·축소하고, 한 손가락으로 끌어 이동합니다. 세로로 든 휴대폰·태블릿에서는 목록이 도면 아래 시트로, 가로 화면에서는 옆 패널로 바뀝니다. 다만 큰 도면은 화면이 넓은 컴퓨터에서 보는 편이 편합니다. 휴대폰 사용법은 <a href="${href("guide")}">사용법</a>의 "휴대폰에서 쓰기"를 참고하세요.</p>
 <h3>큰 파일도 열리나요?</h3>
 <p>파일 크기 제한은 따로 두지 않았습니다. 다만 모든 처리를 내 기기에서 하므로 페이지가 많거나 복잡한 도면은 분석에 시간이 걸리고, 메모리가 적은 휴대폰에서는 느려질 수 있습니다.</p>
 
@@ -67,7 +67,7 @@ export const faq: PageDef = {
 <h3>Which browsers are supported?</h3>
 <p>Current versions of Chrome, Edge, Safari and Firefox. Nothing to install. Very old browsers may fail to read the PDF or draw it.</p>
 <h3>Does it work on a phone?</h3>
-<p>Yes. Pinch with two fingers to zoom and drag with one to pan. In portrait the list becomes a bottom panel, in landscape a side panel. Large drawings are still easier on a wide screen. See "On a phone" in the <a href="${href("guide")}">guide</a>.</p>
+<p>Yes. Pinch with two fingers to zoom and drag with one to pan. On phones and tablets held upright the list becomes a sheet under the drawing; in landscape it is a side panel. Large drawings are still easier on a wide screen. See "On a phone" in the <a href="${href("guide")}">guide</a>.</p>
 <h3>Can it open large files?</h3>
 <p>There is no set size limit, but everything runs on your device, so long or complex schematics take longer to analyze and can be slow on phones with little memory.</p>
 

@@ -2,6 +2,7 @@ import type { PageDef } from "./index.ts";
 
 export const guide: PageDef = {
   slug: "guide",
+  updated: "2026-10-14",
   related: ["learn/example", "help/formats", "learn/find-parts", "faq"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -18,8 +19,8 @@ export const guide: PageDef = {
 
 <h2>2. 화면 구성</h2>
 <ul>
-<li><strong>상단 줄</strong>: 사이트 로고(누르면 첫 화면), 파일 이름, 여러 장인 PDF의 페이지 번호, 다른 PDF 열기, 언어 선택.</li>
-<li><strong>목록</strong>: 검색창, <em>노드</em> 탭(전원과 신호로 나뉜 이름 있는 노드), <em>부품</em> 탭(참조 번호와 값). 노트북·PC와 가로로 든 휴대폰에서는 왼쪽에, 세로로 든 휴대폰에서는 도면 아래 시트로 나옵니다.</li>
+<li><strong>상단 줄</strong>: 사이트 로고(누르면 첫 화면), 파일 이름, 여러 장인 PDF의 페이지 번호(페이지가 8장 이상이거나 화면이 좁으면 <code>‹ 3 / 10 ›</code> 형태, 가운데 숫자를 누르면 페이지 목록), 다른 PDF 열기, 언어 선택.</li>
+<li><strong>목록</strong>: 검색창, <em>노드</em> 탭(전원과 신호로 나뉜 이름 있는 노드), <em>부품</em> 탭(참조 번호와 값), 탭 옆의 <strong>⋯</strong> 메뉴(CSV 저장). 노트북·PC와 가로로 든 휴대폰·태블릿에서는 왼쪽에 나옵니다. 세로로 든 휴대폰과 터치 태블릿에서는 도면 아래 시트로 나옵니다. 다만 마우스로 쓰는 폭 768px 이상의 창이나 폭 1025px 이상의 화면은 세로로 길어도 왼쪽에 나옵니다.</li>
 <li><strong>도면</strong>: PDF 원본을 그대로 그리고, 그 위에 분석 결과(강조, 검색 표시)만 겹쳐 그립니다. 오른쪽 아래 버튼으로 확대·축소·전체 보기를 할 수 있습니다.</li>
 </ul>
 
@@ -38,7 +39,7 @@ export const guide: PageDef = {
 <p><em>부품</em> 탭에는 도면에서 찾은 참조 번호(R1, C3, U2 …)와 근처에 적힌 값이 나옵니다. 부품을 누르면 해당 위치로 이동하고 참조 번호에 테두리가 표시됩니다. 도면에서 참조 번호를 직접 눌러도 됩니다. 부품을 찾는 요령은 <a href="${href("learn/find-parts")}">회로도 PDF에서 부품 찾기</a>에 자세히 정리했습니다.</p>
 
 <h2>6. 목록을 CSV로 저장하기</h2>
-<p>목록 위의 <strong>노드 목록 CSV</strong> 또는 <strong>부품 목록 CSV</strong> 버튼을 누르면 현재 탭의 전체 목록이 CSV 파일로 저장됩니다. 노드 목록에는 이름·종류(전원/신호)·라벨 수·페이지가, 부품 목록에는 참조 번호·값·페이지가 들어갑니다. 엑셀에서 바로 열리도록 UTF-8 BOM을 붙이며, <code>+5V</code>처럼 엑셀이 수식으로 읽는 이름은 글자 그대로 보이도록 저장합니다. 파일은 브라우저에서 만들어져 바로 내려받아지며 어디에도 전송되지 않습니다.</p>
+<p>탭 옆의 <strong>⋯</strong> 메뉴에서 <strong>노드 목록 CSV</strong> 또는 <strong>부품 목록 CSV</strong>를 고르면 해당 목록 전체가 CSV 파일로 저장됩니다. 노드 목록에는 이름·종류(전원/신호)·라벨 수·페이지가, 부품 목록에는 참조 번호·값·페이지가 들어갑니다. 엑셀에서 바로 열리도록 UTF-8 BOM을 붙이며, <code>+5V</code>처럼 엑셀이 수식으로 읽는 이름은 글자 그대로 보이도록 저장합니다. 파일은 브라우저에서 만들어져 바로 내려받아지며 어디에도 전송되지 않습니다.</p>
 
 <h2>7. 화면 이동과 단축키</h2>
 <table>
@@ -53,7 +54,13 @@ export const guide: PageDef = {
 </table>
 
 <h2>8. 휴대폰에서 쓰기</h2>
-<p>세로로 든 휴대폰에서는 목록이 도면 아래 한 줄짜리 시트로 접혀 있어 도면을 넓게 볼 수 있습니다. 시트를 누르면 검색창과 목록이 펼쳐지고, 목록에서 항목을 고르면 다시 접힙니다. 노드를 선택하면 시트에 노드 이름과 라벨 이동 버튼이 나옵니다. 휴대폰을 가로로 돌리면 PC처럼 목록이 왼쪽에 나오며, ‹ 버튼으로 접을 수 있습니다.</p>
+<p>세로로 든 휴대폰과 터치 태블릿에서는 도면 전체가 화면 위쪽에 맞춰 놓이고, 그 아래 남는 자리를 목록 시트가 채웁니다. 처음 열 때와 시트 크기를 바꿀 때는 도면이 잘리지 않도록 전체가 보이게 자동으로 맞춥니다. 직접 확대하거나 옮긴 화면은 그대로 두며, 확대 버튼과 알림이 도면 일부를 덮을 수 있습니다. 시트는 세 단계로 바뀝니다.</p>
+<ul>
+<li><strong>기본</strong>: 도면 바로 아래에 검색창과 목록 첫 줄이 보이는 미리보기입니다. 노드나 부품을 선택하면 선택 정보 한 줄과 목록 세 줄이 함께 보이도록 시트가 커집니다(화면의 62%까지).</li>
+<li><strong>크게</strong>: 검색창 옆 ⌃ 버튼을 누르면 목록이 화면 대부분을 차지합니다(⌄ 버튼으로 되돌림). 검색창을 누를 때도 이 크기로 바뀝니다. 목록에서 항목을 고르면 기본 크기로 돌아갑니다.</li>
+<li><strong>접기</strong>: 검색창 옆 접기 버튼을 누르면 시트가 한 줄로 접히고, 도면이 넓어진 자리에 다시 전체로 맞춰집니다. 한 줄을 누르면 다시 펼쳐집니다.</li>
+</ul>
+<p>시트 위쪽 손잡이를 끌어 크기를 바꾸거나 손잡이를 눌러 접을 수도 있습니다(손잡이는 손가락 조작용이며, 같은 일을 위 버튼들로 할 수 있습니다). 노드를 선택하면 시트 아래쪽에 노드 이름·배선 수·라벨 이동 버튼이 한 줄로 나오고, ⌃ 버튼으로 펼치면 라벨·핀 이름과 <strong>노드 전체 보기</strong>가 나옵니다. 선택 정보와 목록 세 줄을 함께 보여 줄 자리가 없으면 선택 정보만 보이고, <strong>목록으로</strong>를 누르면 목록이 나옵니다. 그때 탭 옆의 <strong>선택 정보 보기</strong> 버튼으로 다시 선택 정보를 볼 수 있습니다. 휴대폰을 가로로 돌리면 PC처럼 목록이 왼쪽에 나오며, ‹ 버튼으로 접을 수 있습니다.</p>
 
 <h2>9. 결과를 믿어도 될까?</h2>
 <p>연결은 PDF에 그려진 모양으로 <strong>추정</strong>한 것입니다. CAD 원본의 넷리스트와 다를 수 있으므로 설계 변경이나 수리처럼 중요한 판단을 하기 전에는 원본 도면과 CAD 자료로 다시 확인해 주세요. 잘 맞지 않는 경우와 해결 방법은 <a href="${href("help/formats")}">지원 형식과 오류 해결</a>에 정리했습니다.</p>
@@ -72,8 +79,8 @@ export const guide: PageDef = {
 
 <h2>2. The screen</h2>
 <ul>
-<li><strong>Top bar</strong>: site logo (back to the home page), file name, page numbers for multi-page PDFs, Open another PDF, and the language switch.</li>
-<li><strong>List</strong>: search box, the <em>Nets</em> tab (named nets split into power and signals) and the <em>Parts</em> tab (references and values). It sits on the left on laptops, desktops and phones held sideways, and as a sheet under the drawing on phones held upright.</li>
+<li><strong>Top bar</strong>: site logo (back to the home page), file name, page numbers for multi-page PDFs (shown as <code>‹ 3 / 10 ›</code> with eight or more pages or on a narrow screen — tap the number for a page list), Open another PDF, and the language switch (a small menu on narrow screens).</li>
+<li><strong>List</strong>: search box, the <em>Nets</em> tab (named nets split into power and signals), the <em>Parts</em> tab (references and values) and the <strong>⋯</strong> menu beside the tabs (CSV export). It sits on the left on laptops, desktops and phones or tablets held sideways, and as a sheet under the drawing on phones and touch tablets held upright. A window 768px or wider used with a mouse, or any screen 1025px or wider, keeps it on the left even when held upright.</li>
 <li><strong>Drawing</strong>: the original PDF, with only the analysis (highlights, search hits) drawn on top. Use the buttons at the bottom right to zoom or fit the drawing.</li>
 </ul>
 
@@ -92,7 +99,7 @@ export const guide: PageDef = {
 <p>The <em>Parts</em> tab lists the reference designators found on the drawing (R1, C3, U2 …) with the values written next to them. Click one to jump to it with its reference outlined, or click a reference directly in the drawing. See <a href="${href("learn/find-parts")}">Finding parts in a schematic PDF</a> for tips.</p>
 
 <h2>6. Export the lists as CSV</h2>
-<p>The <strong>Nets CSV</strong> or <strong>Parts CSV</strong> button above the list saves the whole list of the open tab as a CSV file: name, type (power/signal), label count and pages for nets; reference, value and pages for parts. A UTF-8 byte order mark is added so Excel opens it directly, and names such as <code>+5V</code> that spreadsheets would treat as formulas are written so they show as text. The file is created in your browser and downloaded directly; it is not sent anywhere.</p>
+<p>Choose <strong>Nets CSV</strong> or <strong>Parts CSV</strong> in the <strong>⋯</strong> menu beside the tabs to save that whole list as a CSV file: name, type (power/signal), label count and pages for nets; reference, value and pages for parts. A UTF-8 byte order mark is added so Excel opens it directly, and names such as <code>+5V</code> that spreadsheets would treat as formulas are written so they show as text. The file is created in your browser and downloaded directly; it is not sent anywhere.</p>
 
 <h2>7. Moving around and shortcuts</h2>
 <table>
@@ -107,7 +114,13 @@ export const guide: PageDef = {
 </table>
 
 <h2>8. On a phone</h2>
-<p>Held upright, the list folds into a one-line sheet under the drawing so the drawing gets most of the screen. Tap the sheet to open the search box and lists; picking an item folds it again. With a net selected, the sheet shows its name and the label buttons. Turn the phone sideways and the list moves to the left like on a computer; fold it with the ‹ button.</p>
+<p>On a phone or touch tablet held upright, the whole drawing is fitted to the top of the screen and the list sheet fills the space below it. When the drawing opens and when the sheet changes size, it is fitted automatically so none of it is cut off; a view you zoomed or moved yourself is left as it is, and the zoom buttons and notices can cover part of the drawing. The sheet has three sizes:</p>
+<ul>
+<li><strong>Default</strong>: a preview with the search box and the first row of the list right under the drawing. When you select a net or part, the sheet grows so the selection line and three rows of the list show together (up to 62% of the screen).</li>
+<li><strong>Tall</strong>: tap ⌃ beside the search box and the list takes most of the screen (⌄ brings it back). Tapping the search box switches to this size too. Picking an item returns to the default size.</li>
+<li><strong>Folded</strong>: tap the fold button beside the search box and the sheet folds to one line; the drawing is fitted whole to the larger area. Tap the line to open the sheet again.</li>
+</ul>
+<p>You can also drag the handle at the top of the sheet to resize it, or tap it to fold (the handle is for fingers; the buttons above do the same). With a net selected, a one-line summary (name, wire count, label buttons) appears at the bottom of the sheet; unfold it with ⌃ for the labels, pin names and <strong>Fit selected net</strong>. When there is no room for the selection and three rows of the list together, the selection is shown alone; <strong>Back to list</strong> shows the list, and <strong>Show selection</strong> beside the tabs brings the selection back. Turn the phone sideways and the list moves to the left like on a computer; fold it with the ‹ button.</p>
 
 <h2>9. Can I trust the result?</h2>
 <p>Connections are <strong>inferred</strong> from what is drawn in the PDF and may differ from the netlist in the CAD source. Before a design change or a repair, check against the original drawing and CAD data. Cases that work less well, and what to do about them, are listed in <a href="${href("help/formats")}">Supported files and troubleshooting</a>.</p>
