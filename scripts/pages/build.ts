@@ -36,6 +36,7 @@ const UI = {
     skip: "본문으로 건너뛰기",
     nav: [["guide", "사용법"], ["faq", "FAQ"], ["about", "소개"], ["contact", "문의"]] as const,
     open: "도구 열기",
+    menu: "메뉴",
     other: "English",
     footer: [["about", "소개"], ["contact", "문의"], ["privacy", "개인정보처리방침"], ["terms", "이용약관"]] as const,
     home: "홈",
@@ -49,6 +50,7 @@ const UI = {
     skip: "Skip to content",
     nav: [["guide", "Guide"], ["faq", "FAQ"], ["about", "About"], ["contact", "Contact"]] as const,
     open: "Open the tool",
+    menu: "Menu",
     other: "한국어",
     footer: [["about", "About"], ["contact", "Contact"], ["privacy", "Privacy policy"], ["terms", "Terms of use"]] as const,
     home: "Home",
@@ -117,10 +119,13 @@ ${verificationMeta()}${gaSnippet()}
 <body>
 <a class="skip" href="#content">${ui.skip}</a>
 <header class="top"><div class="wrap">
-<a class="brand" href="${lang === "en" ? "/?lang=en" : "/?lang=ko"}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M11 9h4a2 2 0 0 0 2-2V3M19 9h2M11 15h4a2 2 0 0 1 2 2v4M19 15h2M3 9h2M3 15h2M7 9a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2"/></svg><span>Schematic <b>Viewer</b></span></a>
-<nav aria-label="${lang === "en" ? "Site" : "사이트 메뉴"}">${ui.nav.map(([slug, label]) => `<a href="${pathOf(lang, slug)}"${slug === page.slug ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
+<a class="brand" href="${lang === "en" ? "/?lang=en" : "/?lang=ko"}" aria-label="Schematic Viewer"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M11 9h4a2 2 0 0 0 2-2V3M19 9h2M11 15h4a2 2 0 0 1 2 2v4M19 15h2M3 9h2M3 15h2M7 9a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2"/></svg><span>Schematic <b>Viewer</b></span></a>
+<nav class="nav-wide" aria-label="${lang === "en" ? "Site" : "사이트 메뉴"}">${ui.nav.map(([slug, label]) => `<a href="${pathOf(lang, slug)}"${slug === page.slug ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
 <a class="lang" href="${pathOf(other, page.slug)}" hreflang="${other}" lang="${other}">${ui.other}</a>
 <a class="open" href="${ctx.tool()}">${ui.open}</a>
+<details class="menu"><summary aria-label="${ui.menu}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+<nav aria-label="${ui.menu}">${ui.nav.map(([slug, label]) => `<a href="${pathOf(lang, slug)}"${slug === page.slug ? ' aria-current="page"' : ""}>${label}</a>`).join("")}<a href="${pathOf(other, page.slug)}" hreflang="${other}" lang="${other}">${ui.other}</a></nav>
+</details>
 </div></header>
 <main id="content" class="wrap">
 <nav class="crumbs" aria-label="breadcrumb"><a href="${lang === "en" ? "/?lang=en" : "/?lang=ko"}">${ui.home}</a> / <span>${esc(c.title)}</span></nav>
