@@ -10,6 +10,7 @@ import { example } from "./example.ts";
 import { findParts } from "./find-parts.ts";
 import { readSchematic } from "./read-schematic.ts";
 import { faq } from "./faq.ts";
+import { changelog } from "./changelog.ts";
 
 export type Lang = "ko" | "en";
 
@@ -51,4 +52,4 @@ export interface PageDef {
   content: (ctx: Ctx) => PageContent;
 }
 
-export const pages: PageDef[] = [guide, formats, example, findParts, readSchematic, faq, about, contact, privacy, terms];
+export const pages: PageDef[] = [guide, formats, example, findParts, readSchematic, faq, about, contact, privacy, terms, changelog];
