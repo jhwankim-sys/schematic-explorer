@@ -33,6 +33,17 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
     if (route === "#privacy") window.location.replace(href("/privacy/"));
   }, [route, href]);
   const viewer = route === "#viewer" || route === "#drawing" || route === "#example";
+  /** the header link into the tool: once the workspace is shown, focus lands where work starts (not on the hidden link) */
+  const focusTool = useRef(false);
+  useEffect(() => {
+    if (!viewer || !focusTool.current) return;
+    focusTool.current = false;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const pick = document.getElementById("upload-pick") as HTMLButtonElement | null;
+      const target = document.getElementById("drawing") ?? (pick && !pick.disabled ? pick : document.getElementById("upload-zone"));
+      target?.focus();
+    }));
+  }, [viewer]);
   useEffect(() => {
     const update = () => { setRoute(window.location.hash); window.scrollTo(0, 0); };
     window.addEventListener("hashchange", update);
@@ -67,9 +78,9 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
   // the workspace has a single header row: the brand and language switch move into the viewer toolbar
   const workspaceBrand = <a className="brand tap" href="#home" aria-label={`Schematic Viewer · ${t("홈으로")}`}><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>;
   return <div className={viewer ? "site-shell workspace-shell" : "site-shell"}>
-    <header className="site-header" hidden={viewer}><a className="brand" href="#home"><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>
+    <header className="site-header" hidden={viewer}><a className="brand" href="#home" aria-label="Schematic Viewer"><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>
       <nav aria-label={t("사이트 메뉴", "Site navigation")}><a href={href("/guide/")}>{t("사용법", "Guide")}</a><a href={href("/faq/")}>FAQ</a><a href={href("/about/")}>{t("소개", "About")}</a><a href={href("/contact/")}>{t("문의", "Contact")}</a></nav>
-      <div className="header-actions">{languageSwitch}<a className="header-start" href="#viewer">{t("시작하기", "Get started")}<ArrowRight size={15} aria-hidden="true" /></a></div>
+      <div className="header-actions">{languageSwitch}<a className="header-start" href="#viewer" onClick={() => { focusTool.current = true; }}><span className="hs-long">{t("시작하기", "Get started")}</span><span className="hs-short">{t("도구 열기", "Open the tool")}</span><ArrowRight size={15} aria-hidden="true" /></a></div>
     </header>
     <div className="workspace" hidden={!viewer}><App active={viewer} autoExample={route === "#example"} headerStart={workspaceBrand} headerEnd={workspaceLanguage} /></div>
     {!viewer && <><main id="home">
