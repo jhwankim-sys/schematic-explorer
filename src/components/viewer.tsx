@@ -1,7 +1,7 @@
 import { useT } from "../i18n.tsx";
 import { memo, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import { Minus, Plus, Scan } from "lucide-react";
-import { Button, Spinner } from "./ui.tsx";
+import { Button, cn, Spinner } from "./ui.tsx";
 import type { SchPage, SchText } from "../lib/schematic/analyze.ts";
 import { segPath, type Box } from "../lib/schematic/model.ts";
 
@@ -41,6 +41,13 @@ interface Props {
   matches: SchText[];
   activeMatch: number;
   onPick: (x: number, y: number, tolerance: number) => void;
+  /**
+   * "top": when the drawing is shorter than the surface it sits at the top edge instead of the
+   * middle (narrow portrait screens, where the space below goes to the list sheet)
+   */
+  align?: "center" | "top";
+  /** lay the zoom buttons out in a row (portrait phones: less of the drawing is covered) */
+  controlsRow?: boolean;
   /** the PDF could not be painted (the outline drawing is shown instead) */
   onRenderError?: () => void;
   ref?: Ref<ViewerHandle>;
@@ -77,7 +84,7 @@ const BaseDrawing = memo(function BaseDrawing({ page }: { page: SchPage }) {
   );
 });
 
-export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, matches, activeMatch, onPick, onRenderError, ref }: Props) {
+export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, matches, activeMatch, onPick, onRenderError, align = "center", controlsRow = false, ref }: Props) {
   const maskId = useId().replace(/:/g, "");
   const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -101,9 +108,11 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, ma
   const pinch = useRef<{ d0: number; k0: number; ux: number; uy: number } | null>(null);
   const viewRef = useRef(view);
   const sizeRef = useRef(size);
+  const alignRef = useRef(align);
   useEffect(() => {
     viewRef.current = view;
     sizeRef.current = size;
+    alignRef.current = align;
   });
 
   const fit = useCallback(
@@ -113,15 +122,23 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, ma
       const { w, h } = sizeRef.current;
       const bw = Math.max(b[2] - b[0], 20);
       const bh = Math.max(b[3] - b[1], 20);
+      // the whole box always fits (nothing of the drawing is cut off to save empty space)
       const k = Math.max(bw / (w * (1 - 2 * pad)), bh / (h * (1 - 2 * pad)), 0.004);
       const cx = (b[0] + b[2]) / 2;
       const cy = (b[1] + b[3]) / 2;
-      setView({ x: cx - (w * k) / 2, y: cy - (h * k) / 2, k });
+      let y = cy - (h * k) / 2;
+      if (alignRef.current === "top") {
+        // keep the sheet's top edge from floating down the screen: a short drawing sits at the top
+        // (with the same margin as its sides), a tall one is kept inside the screen where possible
+        const margin = w * pad * k;
+        const viewH = h * k;
+        if (page.height + 2 * margin <= viewH) y = -margin;
+        else y = Math.min(Math.max(y, -margin), page.height + margin - viewH);
+      }
+      setView({ x: cx - (w * k) / 2, y, k });
     },
     [page.width, page.height],
   );
-
-  useImperativeHandle(ref, () => ({ fit }), [fit]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -159,6 +176,8 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, ma
       return { x: ux - px * k, y: uy - py * k, k };
     });
   }, []);
+
+  useImperativeHandle(ref, () => ({ fit }), [fit]);
 
   // wheel zoom needs a non-passive listener on the drawing surface itself
   useEffect(() => {
@@ -465,7 +484,12 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, ma
         </div>
       )}
 
-      <div className="absolute bottom-4 right-4 flex flex-col overflow-hidden rounded-md border border-border bg-popover shadow-sm">
+      <div
+        className={cn(
+          "zoom-controls absolute flex overflow-hidden rounded-md border border-border bg-popover shadow-sm",
+          controlsRow ? "bottom-2 right-2 flex-row" : "bottom-4 right-4 flex-col",
+        )}
+      >
         <Button variant="ghost" size="icon" aria-label={t("확대")} onClick={() => zoomAt(1 / 1.4)}>
           <Plus aria-hidden="true" />
         </Button>
