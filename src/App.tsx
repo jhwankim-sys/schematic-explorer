@@ -1,10 +1,11 @@
 import { useT } from "./i18n.tsx";
 import { installFileDrop } from "./lib/file-drop.ts";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileUp, Focus, List, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileUp, Focus, List, X, ZoomIn } from "lucide-react";
 import { Badge, Button, cn, Spinner } from "./components/ui.tsx";
 import { SchematicSidebar, type PanelMode, type SheetState, type SidebarTab } from "./components/sidebar.tsx";
-import { SchematicViewer, type PdfRenderSource, type ViewerHandle } from "./components/viewer.tsx";
+import { SchematicViewer, type PdfRenderSource, type PickInfo, type ViewerHandle } from "./components/viewer.tsx";
+import { decideTouch, netsNear, TOUCH } from "./components/nearby.ts";
 import { UploadHero } from "./components/upload-hero.tsx";
 import type { SchText } from "./lib/schematic/analyze.ts";
 import { loadSchematic, type Schematic } from "./lib/schematic/extract.ts";
@@ -143,6 +144,17 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
   /** which of the selected net's labels the user has stepped to (-1: none yet) */
   const [occIdx, setOccIdx] = useState(-1);
   const viewer = useRef<ViewerHandle>(null);
+  /** touch: nets about equally close to the fingertip, for the user to choose from (screen position of the tap) */
+  const [choice, setChoice] = useState<{
+    x: number;
+    y: number;
+    cx: number;
+    cy: number;
+    options: { net: number; name: string; netIds: number[] }[];
+    more: number;
+  } | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const choiceRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   /** set while the query comes from typing: the view then moves to the first hit without Enter */
   const typed = useRef(false);
@@ -302,8 +314,9 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
   );
 
   const onPick = useCallback(
-    (x: number, y: number, tol: number) => {
+    (x: number, y: number, tol: number, info: PickInfo) => {
       if (!page || !index) return;
+      setChoice(null);
       const t = index.textAt(x, y, tol * 0.4);
       if (t) {
         if (t.kind === "component") {
@@ -320,7 +333,49 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
           return;
         }
       }
-      const s = index.segAt(x, y, tol);
+      if (info.touch) {
+        // a fingertip can cover several wires: when they are about equally close, let the user choose
+        // instead of silently taking the nearest (mouse and pen keep the single nearest wire below)
+        const option = (net: number) => {
+          const n = page.nets[net];
+          return { net, name: n.name, netIds: n.name ? netsNamed(page, n.name) : [n.id] };
+        };
+        const sameSelection = (net: number) => {
+          const n = page.nets[net];
+          return n.name ? "name:" + n.name.toUpperCase() : "id:" + n.id;
+        };
+        const near = netsNear(index, x, y, (TOUCH.reach + TOUCH.gap) * info.k);
+        const d = decideTouch(near, info.k, option, sameSelection);
+        if (d.kind === "choose") {
+          const r = sectionRef.current?.getBoundingClientRect();
+          setChoice({ x, y, cx: (r?.left ?? 0) + info.sx, cy: (r?.top ?? 0) + info.sy, options: d.options, more: d.more });
+          // the compatibility mousedown/click the browser sends for this same tap must not land on the
+          // list that just opened (or take focus from it): only events at the tap point, once each, briefly.
+          // A real tap on the list is at least 28px away, so it is never swallowed.
+          const tx = (r?.left ?? 0) + info.sx;
+          const ty = (r?.top ?? 0) + info.sy;
+          const swallow = (type: string) => {
+            const stop = (ev: Event) => {
+              const m = ev as MouseEvent;
+              if (Math.hypot(m.clientX - tx, m.clientY - ty) > 12) return;
+              ev.stopPropagation();
+              ev.preventDefault();
+              window.removeEventListener(type, stop, { capture: true });
+            };
+            window.addEventListener(type, stop, { capture: true });
+            setTimeout(() => window.removeEventListener(type, stop, { capture: true }), 400);
+          };
+          swallow("mousedown");
+          swallow("click");
+          return;
+        }
+        if (d.kind === "pick") {
+          selectNet(page.index, d.option.netIds, d.option.name, false);
+          setTab("nets");
+          return;
+        }
+      }
+      const s = info.touch ? -1 : index.segAt(x, y, tol);
       if (s >= 0) {
         const n = page.nets[page.segNet[s]];
         selectNet(page.index, n.name ? netsNamed(page, n.name) : [n.id], n.name, false);
@@ -474,6 +529,11 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (choice) {
+        setChoice(null);
+        document.getElementById("drawing")?.focus({ preventScroll: true });
+        return;
+      }
       const inField = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       if (inField) {
         if (query) setQuery("");
@@ -483,7 +543,38 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, sel, query]);
+  }, [active, sel, query, choice]);
+
+  // a list made for one tap does not survive another page, another file or a moved view
+  useEffect(() => setChoice(null), [doc, pageIdx]);
+  // focus the list when it opens, so a screen reader announces it and Tab moves through its rows
+  useEffect(() => {
+    if (choice) choiceRef.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+  }, [choice]);
+  // a touch or click outside the list closes it and carries on as usual (a pinch or drag on the drawing
+  // works from its first finger: nothing covers the drawing and the event is not stopped)
+  useEffect(() => {
+    if (!choice) return;
+    const outside = (e: PointerEvent) => {
+      if (!choiceRef.current?.contains(e.target as Node)) setChoice(null);
+    };
+    window.addEventListener("pointerdown", outside, { capture: true });
+    return () => window.removeEventListener("pointerdown", outside, { capture: true });
+  }, [choice]);
+  // however the list closes, focus that was in it goes back to the drawing (its buttons are gone)
+  const hadChoice = useRef(false);
+  useEffect(() => {
+    if (choice) hadChoice.current = true;
+    else if (hadChoice.current) {
+      hadChoice.current = false;
+      if (document.activeElement === document.body) document.getElementById("drawing")?.focus({ preventScroll: true });
+    }
+  }, [choice]);
+  /** after a choice from the list, focus goes back to the drawing (the list and its buttons are gone) */
+  const closeChoiceTo = useCallback(() => {
+    setChoice(null);
+    requestAnimationFrame(() => document.getElementById("drawing")?.focus({ preventScroll: true }));
+  }, []);
 
   const exportCsv = useCallback(
     (which: SidebarTab) => {
@@ -917,7 +1008,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
           />
         )}
 
-        <section aria-label={t("도면")} className="relative min-h-0 min-w-0 flex-1">
+        <section ref={sectionRef} aria-label={t("도면")} className="relative min-h-0 min-w-0 flex-1">
           {!doc || !page ? (
             <UploadHero onFile={(f) => void openFile(f, "picker")} onExample={() => void openExample()} busy={!!busy} />
           ) : (
@@ -932,6 +1023,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
               matches={matches}
               activeMatch={matchIdx}
               onPick={onPick}
+              onViewChange={() => setChoice(null)}
               onRenderError={() => track({ name: "error", params: { type: "render_failed" } })}
               align={layout.side ? "center" : "top"}
               controlsRow={!layout.side}
@@ -959,6 +1051,79 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
               {errorBox}
             </>
           )}
+
+          {choice && (() => {
+            // beside the finger, never under it: below when the list fits on the screen, else above; kept inside the window
+            const width = Math.min(260, window.innerWidth - 16);
+            // nets without a name cannot be told apart in a list: one guidance line sends the user to zoom instead
+            const unnamed = choice.options.filter((o) => !o.name);
+            const rows = unnamed.length >= 2 ? choice.options.filter((o) => o.name) : choice.options;
+            const guide = unnamed.length >= 2 ? unnamed.length : 0;
+            const h = 40 + 44 * (rows.length + 1) + (choice.more ? 28 : 0) + (guide ? 40 : 0) + 8;
+            const left = Math.min(Math.max(choice.cx - width / 2, 8), window.innerWidth - width - 8);
+            const below = choice.cy + 28 + h <= window.innerHeight - 8;
+            const top = below ? choice.cy + 28 : Math.max(8, choice.cy - 28 - h);
+            return (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none fixed z-[47] size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--net-highlight)]"
+                  style={{ left: choice.cx, top: choice.cy }}
+                />
+                <div
+                  ref={choiceRef}
+                  role="dialog"
+                  aria-label={t("가까운 노드 선택", "Choose a nearby net")}
+                  className="fixed z-[48] rounded-md border border-border bg-popover p-1 shadow-lg"
+                  style={{ left, top, width }}
+                >
+                  <p className="px-2 pb-1 pt-1.5 text-xs text-muted-foreground">{t("여러 배선이 가까이 있습니다", "Several wires are close here")}</p>
+                  <ul>
+                    {rows.map((o) => (
+                      <li key={o.net}>
+                        <button
+                          type="button"
+                          className="flex min-h-11 w-full items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => {
+                            closeChoiceTo();
+                            if (page) selectNet(page.index, o.netIds, o.name, false);
+                            setTab("nets");
+                          }}
+                        >
+                          <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-[var(--net-highlight)]" />
+                          <span className={cn("min-w-0 flex-1 truncate", o.name && "font-mono")}>{o.name || t("이름 없는 노드")}</span>
+                        </button>
+                      </li>
+                    ))}
+                    {guide > 0 && (
+                      <li className="px-2 py-1.5 text-xs text-muted-foreground">
+                        {t(`이름 없는 노드 ${guide}개가 겹쳐 있어 목록으로는 구분할 수 없습니다. 확대해서 고르세요.`, `${guide} unnamed nets overlap here and can't be told apart in a list. Zoom in to choose.`)}
+                      </li>
+                    )}
+                    {choice.more > 0 && (
+                      <li className="px-2 py-1.5 text-xs text-muted-foreground">
+                        {t(`이 밖에 ${choice.more}개 더 있습니다. 확대해서 고르세요.`, `${choice.more} more here. Zoom in to choose.`)}
+                      </li>
+                    )}
+                    <li>
+                      <button
+                        type="button"
+                        className="flex min-h-11 w-full items-center gap-2 rounded-sm px-2 text-left text-sm text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4"
+                        onClick={() => {
+                          const c = choice;
+                          closeChoiceTo();
+                          viewer.current?.zoomAround(c.x, c.y, 1 / 3);
+                        }}
+                      >
+                        <ZoomIn aria-hidden="true" />
+                        {t("이 부분 확대", "Zoom in here")}
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </>
+            );
+          })()}
 
           {busy && (
             <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70" role="status" aria-live="polite">

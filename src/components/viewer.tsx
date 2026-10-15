@@ -7,6 +7,18 @@ import { segPath, type Box } from "../lib/schematic/model.ts";
 
 export interface ViewerHandle {
   fit: (box?: Box | null, pad?: number) => void;
+  /** zoom by a factor around a drawing point (factor < 1 zooms in) */
+  zoomAround: (x: number, y: number, factor: number) => void;
+}
+
+/** where a tap or click landed: lets a picker sit next to the finger and work in screen pixels */
+export interface PickInfo {
+  touch: boolean;
+  /** position on the drawing surface in CSS pixels */
+  sx: number;
+  sy: number;
+  /** drawing units per screen pixel at the time of the tap */
+  k: number;
 }
 
 interface View {
@@ -40,7 +52,9 @@ interface Props {
   /** search hits outlined in amber */
   matches: SchText[];
   activeMatch: number;
-  onPick: (x: number, y: number, tolerance: number) => void;
+  onPick: (x: number, y: number, tolerance: number, info: PickInfo) => void;
+  /** the view moved or zoomed (pan, pinch, wheel, keys, buttons, fit) */
+  onViewChange?: () => void;
   /**
    * "top": when the drawing is shorter than the surface it sits at the top edge instead of the
    * middle (narrow portrait screens, where the space below goes to the list sheet)
@@ -84,7 +98,7 @@ const BaseDrawing = memo(function BaseDrawing({ page }: { page: SchPage }) {
   );
 });
 
-export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, matches, activeMatch, onPick, onRenderError, align = "center", controlsRow = false, ref }: Props) {
+export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, matches, activeMatch, onPick, onViewChange, onRenderError, align = "center", controlsRow = false, ref }: Props) {
   const maskId = useId().replace(/:/g, "");
   const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -177,7 +191,22 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, ma
     });
   }, []);
 
-  useImperativeHandle(ref, () => ({ fit }), [fit]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      fit,
+      zoomAround: (x: number, y: number, factor: number) => {
+        const v = viewRef.current;
+        zoomAt(factor, (x - v.x) / v.k, (y - v.y) / v.k);
+      },
+    }),
+    [fit, zoomAt],
+  );
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
+  useEffect(() => {
+    onViewChangeRef.current?.();
+  }, [view]);
 
   // wheel zoom needs a non-passive listener on the drawing surface itself
   useEffect(() => {
@@ -332,8 +361,11 @@ export function SchematicViewer({ page, pdf, netIds, focusTexts, activeFocus, ma
           const r = e.currentTarget.getBoundingClientRect();
           const v = viewRef.current;
           // fingers are less precise than a mouse pointer
-          const tol = (e.pointerType === "touch" ? 9 : 5) * v.k;
-          onPick(v.x + (e.clientX - r.left) * v.k, v.y + (e.clientY - r.top) * v.k, tol);
+          const touch = e.pointerType === "touch";
+          const tol = (touch ? 9 : 5) * v.k;
+          const sx = e.clientX - r.left;
+          const sy = e.clientY - r.top;
+          onPick(v.x + sx * v.k, v.y + sy * v.k, tol, { touch, sx, sy, k: v.k });
         }}
         onPointerCancel={(e) => {
           pointers.current.delete(e.pointerId);
