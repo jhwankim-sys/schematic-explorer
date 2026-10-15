@@ -3,7 +3,7 @@ import { installFileDrop } from "./lib/file-drop.ts";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileUp, Focus, List, X } from "lucide-react";
 import { Badge, Button, cn, Spinner } from "./components/ui.tsx";
-import { SchematicSidebar, type SidebarTab } from "./components/sidebar.tsx";
+import { SchematicSidebar, type PanelMode, type SheetState, type SidebarTab } from "./components/sidebar.tsx";
 import { SchematicViewer, type PdfRenderSource, type ViewerHandle } from "./components/viewer.tsx";
 import { UploadHero } from "./components/upload-hero.tsx";
 import type { SchText } from "./lib/schematic/analyze.ts";
@@ -38,22 +38,33 @@ interface AppProps {
   headerEnd?: ReactNode;
 }
 
-const SIDE_QUERY = "(min-width: 768px), (orientation: landscape) and (max-height: 500px)";
+/**
+ * The list goes beside the drawing on landscape screens, on desktop browsers (a fine pointer) from
+ * 768px and on anything wider than a tablet; phones and tablets held upright get a sheet under the
+ * drawing (a side panel there leaves wide empty bands above and below a landscape sheet).
+ */
+const SIDE_QUERY =
+  "(min-width: 768px) and (orientation: landscape), (min-width: 768px) and (pointer: fine), (min-width: 1025px), (orientation: landscape) and (max-height: 500px)";
 const COMPACT_QUERY = "(max-height: 500px)";
+/** the folded sheet's handle row */
+const HANDLE_H = 45;
+/** narrow toolbars show the pages as "‹ 3 / 10 ›" */
+const NARROW_QUERY = "(max-width: 639px)";
+const COARSE_QUERY = "(pointer: coarse)";
 
-/** wide screens and phones held sideways get the list beside the drawing; narrow portrait screens get a sheet */
 function useLayout() {
   const read = () => {
     try {
-      return { side: window.matchMedia(SIDE_QUERY).matches, compact: window.matchMedia(COMPACT_QUERY).matches };
+      const m = (q: string) => window.matchMedia(q).matches;
+      return { side: m(SIDE_QUERY), compact: m(COMPACT_QUERY), narrow: m(NARROW_QUERY), coarse: m(COARSE_QUERY) };
     } catch {
-      return { side: true, compact: false };
+      return { side: true, compact: false, narrow: false, coarse: false };
     }
   };
   const [state, setState] = useState(read);
   useEffect(() => {
     const update = () => setState(read());
-    const mqs = [window.matchMedia(SIDE_QUERY), window.matchMedia(COMPACT_QUERY)];
+    const mqs = [SIDE_QUERY, COMPACT_QUERY, NARROW_QUERY, COARSE_QUERY].map((q) => window.matchMedia(q));
     mqs.forEach((m) => m.addEventListener("change", update));
     window.addEventListener("resize", update);
     return () => {
@@ -77,13 +88,58 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
   const [matchIdx, setMatchIdx] = useState(0);
   const [tab, setTab] = useState<SidebarTab>("nets");
   const [error, setError] = useState<string | null>(null);
-  /** selection details in the sidebar can be folded away */
-  const [detailOpen, setDetailOpen] = useState(true);
-  /** small screens: whether the list sheet under the drawing is open */
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const layout = useLayout();
+  /** small screens (sheet, short side panel): selection details start folded to one line */
+  const small = !layout.side || layout.compact;
+  /** selection details in the sidebar can be folded away (null: the default for the layout) */
+  const [detailPref, setDetailPref] = useState<boolean | null>(null);
+  /** the sidebar shows the details alone when the panel is too short for both: then they are unfolded */
+  const [panelMode, setPanelMode] = useState<PanelMode>("both");
+  const detailOpen = panelMode === "detail" || (detailPref ?? !small);
+  /** sheet: height the sidebar measured for its head + folded selection line + three whole list rows */
+  const [peekNeed, setPeekNeed] = useState(0);
+  /** small screens: the list sheet under the drawing (handle only / filling the space under the drawing / tall) */
+  const [sheet, setSheet] = useState<SheetState>("peek");
+  /** after picking something from a tall sheet, make room for the drawing again */
+  const lowerSheet = useCallback(() => setSheet((s) => (s === "full" ? "peek" : s)), []);
   /** side layout: the list panel can be folded away for more drawing */
   const [panelOpen, setPanelOpen] = useState(true);
-  const layout = useLayout();
+  const mainRef = useRef<HTMLElement>(null);
+  const [mainSize, setMainSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setMainSize({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  /**
+   * On-screen keyboard. One coordinate system only: the layout keeps its size while the keyboard is
+   * up (the browsers' default — iOS Safari, and Chrome on Android since it resizes only the visual
+   * viewport), so the layout, its media queries and the sheet heights do not change while typing.
+   * The keyboard's height is read from visualViewport and only pads the end of the lists (--kb) so
+   * every row can be scrolled above it. When it closes, a page the browser scrolled to show the
+   * search box is scrolled back.
+   */
+  useEffect(() => {
+    if (!active) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const update = () => {
+      const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty("--kb", `${kb}px`);
+      if (kb === 0 && (window.scrollY !== 0 || window.scrollX !== 0)) window.scrollTo(0, 0);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      root.style.removeProperty("--kb");
+    };
+  }, [active]);
   /** which of the selected net's labels the user has stepped to (-1: none yet) */
   const [occIdx, setOccIdx] = useState(-1);
   const viewer = useRef<ViewerHandle>(null);
@@ -124,11 +180,12 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
     else track({ name: "file_open", params: { source, size_kb: Math.round(file.size / 1024) } });
     loading.current = true;
     setError(null);
-    setNotice(null);
     setBusy("도면 읽는 중");
     const t0 = performance.now();
     try {
       const d = await loadSchematic(file, (m) => setBusy(m));
+      // the scan notice belongs to the drawing on screen: it goes only when another drawing opens
+      setNotice(null);
       setDoc(d);
       setDocumentSerial((n) => n + 1);
       setMatchIdx(0);
@@ -136,7 +193,8 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
       setPageIdx(0);
       setSel(null);
       setQuery("");
-      setSheetOpen(false);
+      setSheet("peek");
+      setDetailPref(null);
       const nets = new Set(d.pages.flatMap((p) => p.nets.filter((n) => n.name).map((n) => n.name.toUpperCase()))).size;
       const parts = new Set(d.pages.flatMap((p) => p.components.map((c) => c.ref))).size;
       const textLayer = d.pages.some((p) => p.texts.length > 0);
@@ -234,13 +292,13 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
       if (!doc) return;
       const w = c.where.find((x) => x.page === pageIdx) ?? c.where[0];
       const p = doc.pages[w.page];
-      setSheetOpen(false);
+      lowerSheet();
       setPageIdx(w.page);
       setSel({ type: "component", ref: c.ref });
       const b = unionBox(w.textIds.map((id) => textBox(p.texts[id]))) ?? w.box ?? null;
       if (b) requestAnimationFrame(() => viewer.current?.fit([b[0] - 30, b[1] - 22, b[2] + 30, b[3] + 22], 0.05));
     },
-    [doc, pageIdx],
+    [doc, pageIdx, lowerSheet],
   );
 
   const onPick = useCallback(
@@ -334,7 +392,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
 
   const pickNetEntry = useCallback(
     (e: NetEntry) => {
-      setSheetOpen(false);
+      lowerSheet();
       // clicking the selected net again walks through its labels (×3 → 1/3, 2/3, 3/3)
       if (sel?.type === "net" && sel.name && sel.name.toUpperCase() === e.name.toUpperCase() && occurrences.length) {
         gotoOcc(occIdx + 1);
@@ -343,7 +401,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
       const w = e.where.find((x) => x.page === pageIdx) ?? e.where[0];
       selectNet(w.page, w.netIds, e.name);
     },
-    [pageIdx, selectNet, sel, occurrences, occIdx, gotoOcc],
+    [pageIdx, selectNet, sel, occurrences, occIdx, gotoOcc, lowerSheet],
   );
 
   /** switching pages keeps a named net selected when it is on the new page too */
@@ -459,35 +517,75 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
         ? { title: compInfo.ref, sub: compInfo.values.join(" · ") || undefined }
         : null;
 
-  // selection details live in the sidebar (under the lists) so they never cover the drawing
-  const detailHead = (title: string, mono = true) => (
-    <div className="flex items-center gap-2">
-      <span aria-hidden="true" className="selection-dot size-2.5 shrink-0 rounded-full" />
-      <h2 className={cn("min-w-0 flex-1 truncate text-sm font-semibold", mono && "font-mono")} title={title}>
-        {title}
-      </h2>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        aria-expanded={detailOpen}
-        aria-controls="selection-detail"
-        aria-label={t(detailOpen ? "선택 정보 접기" : "선택 정보 펼치기")}
-        onClick={() => setDetailOpen((o) => !o)}
-      >
-        {detailOpen ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
+  /** stepping through the selected net's labels: ‹ 2/5 › */
+  const occStepper = (cls: string, wide = false) => (
+    <div className={cn("flex shrink-0 items-center", cls)}>
+      <Button variant={wide ? "outline" : "ghost"} size="icon" className="size-7" aria-label={t("이전 라벨")} onClick={() => gotoOcc(occIdx < 0 ? -1 : occIdx - 1)}>
+        <ChevronLeft aria-hidden="true" />
       </Button>
-      <Button variant="ghost" size="icon" className="-mr-1 size-7" aria-label={t("선택 해제")} onClick={() => setSel(null)}>
-        <X aria-hidden="true" />
+      <span className={cn("text-center text-xs tabular-nums", wide ? "min-w-12" : "min-w-9 text-muted-foreground")} aria-live="polite">
+        {occIdx < 0 ? "–" : occIdx + 1}
+        {wide ? " / " : "/"}
+        {occurrences.length}
+      </span>
+      <Button variant={wide ? "outline" : "ghost"} size="icon" className="size-7" aria-label={t("다음 라벨")} onClick={() => gotoOcc(occIdx + 1)}>
+        <ChevronRight aria-hidden="true" />
       </Button>
     </div>
   );
+
+  const toggleDetail = () => {
+    const next = !detailOpen;
+    setDetailPref(next);
+    // unfolding on a phone: the tall sheet has room for the details and the list
+    if (next && !layout.side) setSheet("full");
+  };
+
+  // selection details live in the sidebar (under the lists) so they never cover the drawing.
+  // On small screens they start folded to one line (name, counts, label stepping); unfolded, the
+  // body scrolls on its own so the list above keeps its rows.
+  const detailHead = (title: string, mono: boolean, sub?: string, extra?: ReactNode) => (
+    <div className="flex shrink-0 items-center gap-2">
+      <span aria-hidden="true" className="selection-dot size-2.5 shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1">
+        <h2 className={cn("truncate text-sm font-semibold", mono && "font-mono")} title={title}>
+          {title}
+        </h2>
+        {sub && !detailOpen && <p className="truncate text-[11px] leading-tight text-muted-foreground">{sub}</p>}
+      </div>
+      {extra}
+      {/* details shown alone (short panel): the bar above them leads back to the list instead */}
+      {panelMode !== "detail" && (
+      <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          aria-expanded={detailOpen}
+          aria-controls="selection-detail"
+          aria-label={t(detailOpen ? "선택 정보 접기" : "선택 정보 펼치기")}
+          onClick={toggleDetail}
+        >
+          {detailOpen ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
+        </Button>
+      )}
+      {/* a short side panel keeps the folded line for the name; clearing is in the unfolded details
+          (or tap an empty spot of the drawing) */}
+      {!(layout.compact && !detailOpen) && (
+        <Button variant="ghost" size="icon" className="-mr-1 size-7" aria-label={t("선택 해제")} onClick={() => setSel(null)}>
+          <X aria-hidden="true" />
+        </Button>
+      )}
+    </div>
+  );
+  // folded, the selection line never gets squeezed; unfolded, its body scrolls inside the room left
+  const detailCls = cn("flex min-h-0 flex-col border-t border-border bg-card px-3", detailOpen ? "shrink" : "shrink-0", layout.compact ? "py-0.5" : "py-1.5");
+  const bodyCls = "min-h-0 overflow-y-auto overscroll-contain pb-1";
   const detail =
     netInfo && sel?.type === "net" ? (
-      <section aria-label={t("선택한 노드")} className="shrink-0 border-t border-border bg-card px-3 py-2">
-        {detailHead(sel.name || t("이름 없는 노드"), !!sel.name)}
+      <section aria-label={t("선택한 노드")} className={detailCls}>
+        {detailHead(sel.name || t("이름 없는 노드"), !!sel.name, selectionSummary?.sub, small && !layout.compact && !detailOpen && occurrences.length > 0 ? occStepper("") : null)}
         {detailOpen && (
-          <div id="selection-detail" className="pb-1">
+          <div id="selection-detail" className={bodyCls}>
             <p className="mt-1 text-xs text-muted-foreground">
               {netInfo.here
                 ? t(`배선 ${netInfo.segs}개 · 접점 ${netInfo.dots}개`, `${netInfo.segs} wires · ${netInfo.dots} junctions`)
@@ -515,21 +613,13 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             {occurrences.length > 0 && (
               <div className="mt-2 flex items-center gap-1">
                 <h3 className="mr-auto text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("라벨 위치")}</h3>
-                <Button variant="outline" size="icon" className="size-7" aria-label={t("이전 라벨")} onClick={() => gotoOcc(occIdx < 0 ? -1 : occIdx - 1)}>
-                  <ChevronLeft aria-hidden="true" />
-                </Button>
-                <span className="min-w-12 text-center text-xs tabular-nums" aria-live="polite">
-                  {occIdx < 0 ? "–" : occIdx + 1} / {occurrences.length}
-                </span>
-                <Button variant="outline" size="icon" className="size-7" aria-label={t("다음 라벨")} onClick={() => gotoOcc(occIdx + 1)}>
-                  <ChevronRight aria-hidden="true" />
-                </Button>
+                {occStepper("gap-1", true)}
               </div>
             )}
             {netInfo.labels.length > 0 && (
               <div className="mt-2">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("연결된 라벨·핀 이름")}</h3>
-                <ul className="mt-1.5 flex max-h-28 flex-wrap gap-1 overflow-y-auto">
+                <ul className="mt-1.5 flex flex-wrap gap-1">
                   {netInfo.labels.map(([s, n]) => (
                     <li key={s}>
                       <Badge className="font-mono">
@@ -547,7 +637,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
                 variant="outline"
                 className="mt-3 w-full"
                 onClick={() => {
-                  setSheetOpen(false);
+                  lowerSheet();
                   if (page) viewer.current?.fit(netBox(page, sel.netIds), 0.12);
                 }}
               >
@@ -559,10 +649,10 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
         )}
       </section>
     ) : compInfo ? (
-      <section aria-label={t("선택한 부품")} className="shrink-0 border-t border-border bg-card px-3 py-2">
-        {detailHead(compInfo.ref)}
+      <section aria-label={t("선택한 부품")} className={detailCls}>
+        {detailHead(compInfo.ref, true, compInfo.values.join(" · ") || undefined)}
         {detailOpen && (
-          <div id="selection-detail" className="pb-1">
+          <div id="selection-detail" className={bodyCls}>
             {compInfo.values.length > 0 && <p className="mt-1 font-mono text-sm">{compInfo.values.join(" · ")}</p>}
             <Button size="sm" variant="outline" className="mt-3 w-full" onClick={() => pickComp(compInfo)}>
               <Focus aria-hidden="true" />
@@ -572,6 +662,155 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
         )}
       </section>
     ) : null;
+
+  /**
+   * Sheet height while it "peeks": measured, not a fixed share of the screen. The drawing is fitted
+   * whole to the area above the sheet (top-aligned); when the page fitted to the full width leaves
+   * room under it, the sheet takes exactly that room so no empty band is left between them.
+   * Lower bound: without a selection, a preview (search box, tabs and a first row); with one, what the
+   * sidebar measured for its head, the folded selection line and three whole rows. Upper bound (wins
+   * when the two conflict): 62% of the screen, leaving the drawing at least 160px. When a selection
+   * does not fit under it, the sidebar switches to the details alone (explicitly, with "back to list").
+   */
+  const hasDetail = !!detail;
+  const peekHeight = useMemo(() => {
+    if (!page || !mainSize.h) return 0;
+    const margin = mainSize.w * 0.02;
+    const drawingH = (mainSize.w - 2 * margin) * (page.height / page.width) + 2 * margin;
+    const preview = layout.coarse ? 216 : 180;
+    const lo = hasDetail ? Math.max(preview, peekNeed) : preview;
+    const hi = Math.max(HANDLE_H, Math.min(window.innerHeight * 0.62, mainSize.h - 160));
+    return Math.round(Math.min(hi, Math.max(lo, mainSize.h - drawingH - 2)));
+  }, [page, mainSize, layout.coarse, hasDetail, peekNeed]);
+
+  /** pages: one button each, or "‹ 3 / 10 ›" when there are many or the toolbar is narrow */
+  const pager = doc && doc.pages.length > 1 && (
+    layout.narrow || doc.pages.length > 7 ? (
+      <nav aria-label={t("페이지")} className="pager flex shrink-0 items-center">
+        <Button variant="ghost" size="icon" className="size-8" aria-label={t("이전 페이지")} disabled={pageIdx === 0} onClick={() => gotoPage(pageIdx - 1)}>
+          <ChevronLeft aria-hidden="true" />
+        </Button>
+        <label className="tap relative flex h-8 items-center justify-center rounded-md px-1.5 text-sm tabular-nums hover:bg-muted">
+          <span aria-hidden="true">
+            {pageIdx + 1} / {doc.pages.length}
+          </span>
+          {/* same meaning as the dots on the page buttons: the selected net is on other pages too */}
+          {selEntry && selEntry.where.some((w) => w.page !== pageIdx) && (
+            <span aria-hidden="true" title={t("선택한 노드가 다른 페이지에도 있습니다")} className="selection-dot absolute right-0.5 top-1 size-1.5 rounded-full" />
+          )}
+          <select
+            aria-label={t("페이지 선택")}
+            className="absolute inset-0 cursor-pointer opacity-0"
+            value={pageIdx}
+            onChange={(e) => gotoPage(Number(e.target.value))}
+          >
+            {doc.pages.map((p) => (
+              <option key={p.index} value={p.index}>
+                {p.index + 1}
+                {selEntry?.where.some((w) => w.page === p.index) ? ` • ${t("선택한 노드 있음")}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          aria-label={t("다음 페이지")}
+          disabled={pageIdx === doc.pages.length - 1}
+          onClick={() => gotoPage(pageIdx + 1)}
+        >
+          <ChevronRight aria-hidden="true" />
+        </Button>
+      </nav>
+    ) : (
+      <nav aria-label={t("페이지")} className="flex items-center gap-1">
+        {doc.pages.map((p) => (
+          <Button
+            key={p.index}
+            size="sm"
+            variant={p.index === pageIdx ? "default" : "ghost"}
+            aria-current={p.index === pageIdx ? "page" : undefined}
+            className="relative"
+            onClick={() => gotoPage(p.index)}
+          >
+            {p.index + 1}
+            {selEntry?.where.some((w) => w.page === p.index) && (
+              <span aria-hidden="true" className="selection-dot absolute right-1 top-1 size-1.5 rounded-full" />
+            )}
+          </Button>
+        ))}
+      </nav>
+    )
+  );
+
+  // an error on a phone: a tall sheet is lowered so the alert has room above it
+  useEffect(() => {
+    if (error && !layout.side) setSheet((st) => (st === "full" ? "peek" : st));
+  }, [error, layout.side]);
+
+  /** notices: above the drawing on phone sheets (clear of the zoom buttons and the sheet), else at the bottom */
+  const topNotices = !layout.side;
+
+  const errorBox = error && (
+    <div
+      role="alert"
+      className={cn(
+        "pointer-events-auto flex items-center gap-2 rounded-md border border-red-300 bg-popover px-4 py-2 text-sm text-red-700 shadow-md dark:text-red-300",
+        topNotices ? "w-full max-w-xl" : "absolute bottom-4 left-1/2 w-max max-w-[calc(100%-9rem)] -translate-x-1/2",
+      )}
+    >
+      <p className="min-w-0 flex-1">{t(error)}</p>
+      <Button variant="ghost" size="icon" className="size-7" aria-label={t("알림 닫기")} onClick={() => setError(null)}>
+        <X aria-hidden="true" />
+      </Button>
+    </div>
+  );
+  const noticeBox = doc && notice && (
+    <div
+      role="status"
+      className={cn(
+        "pointer-events-auto flex max-w-xl items-start gap-2 rounded-md border border-amber-300 bg-popover px-4 py-3 text-sm shadow-md",
+        topNotices ? "w-full" : "absolute inset-x-16 bottom-16 mx-auto",
+      )}
+    >
+      <p className="min-w-0 flex-1 leading-relaxed">{t(notice)}</p>
+      <Button variant="ghost" size="icon" className="size-7 shrink-0" aria-label={t("알림 닫기")} onClick={() => setNotice(null)}>
+        <X aria-hidden="true" />
+      </Button>
+    </div>
+  );
+  /**
+   * Search position (n / N, previous / next). Beside the drawing it floats over the top of the
+   * drawing as before; on a phone sheet it sits under the search box instead, so the strip of
+   * drawing above a tall sheet keeps room for the zoom buttons.
+   */
+  const queryPill = doc && query.trim() && (
+    <div
+      className={cn(
+        "pointer-events-auto flex items-center gap-1 whitespace-nowrap text-sm",
+        topNotices
+          ? "min-w-0 px-3 pb-1"
+          : "absolute left-1/2 top-3 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-md border border-border bg-popover py-1 pl-3 pr-1 shadow-sm",
+      )}
+    >
+      <span className={cn("min-w-0 truncate font-mono", topNotices && "sr-only")}>{query.trim()}</span>
+      <span className={cn("shrink-0 tabular-nums text-muted-foreground", topNotices ? "mr-auto text-xs" : "px-2")} aria-live="polite">
+        {matches.length ? `${Math.min(matchIdx + 1, matches.length)} / ${matches.length}` : t("도면에 없음")}
+        {exactCount > 0 && exactCount < matches.length && (
+          <span className="ml-2 text-xs">
+            {t("정확히 일치")} {exactCount}
+          </span>
+        )}
+      </span>
+      <Button variant="ghost" size="icon" className="size-7" aria-label={t("이전 위치")} disabled={!matches.length} onClick={() => gotoMatch(matchIdx - 1)}>
+        <ChevronUp aria-hidden="true" />
+      </Button>
+      <Button variant="ghost" size="icon" className="size-7" aria-label={t("다음 위치")} disabled={!matches.length} onClick={() => gotoMatch(matchIdx + 1)}>
+        <ChevronDown aria-hidden="true" />
+      </Button>
+    </div>
+  );
 
   return (
     <div className="viewer-app relative flex h-full min-h-0 flex-col bg-background">
@@ -599,29 +838,11 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
         {headerStart}
         {doc && (
           <>
-            {headerStart && <span className="h-4 w-px bg-border" aria-hidden="true" />}
-            <p className="min-w-0 truncate text-sm text-muted-foreground" title={doc.fileName}>
+            {headerStart && <span className="h-4 w-px bg-border max-[400px]:hidden" aria-hidden="true" />}
+            <p className="min-w-0 truncate text-sm text-muted-foreground max-[400px]:hidden" title={doc.fileName}>
               {doc.fileName}
             </p>
-            {doc.pages.length > 1 && (
-              <nav aria-label={t("페이지")} className="flex items-center gap-1">
-                {doc.pages.map((p) => (
-                  <Button
-                    key={p.index}
-                    size="sm"
-                    variant={p.index === pageIdx ? "default" : "ghost"}
-                    aria-current={p.index === pageIdx ? "page" : undefined}
-                    className="relative"
-                    onClick={() => gotoPage(p.index)}
-                  >
-                    {p.index + 1}
-                    {selEntry?.where.some((w) => w.page === p.index) && (
-                      <span aria-hidden="true" className="selection-dot absolute right-1 top-1 size-1.5 rounded-full" />
-                    )}
-                  </Button>
-                ))}
-              </nav>
-            )}
+            {pager}
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
@@ -657,7 +878,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
         </div>
       </header>
 
-      <main className={cn("flex min-h-0 flex-1", layout.side ? "flex-row" : "flex-col-reverse")}>
+      <main ref={mainRef} className={cn("flex min-h-0 flex-1", layout.side ? "flex-row" : "flex-col-reverse")}>
         {doc && page && (!layout.side || panelOpen) && (
           <SchematicSidebar
             query={query}
@@ -679,27 +900,20 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             onPickComp={pickComp}
             onExport={exportCsv}
             detail={detail}
+            // what the user asked for (unfolded or not), not the unfolding forced by the details-only view
+            detailExpanded={!!detail && (detailPref ?? !small)}
+            onFoldDetail={() => setDetailPref(false)}
+            onPanelMode={setPanelMode}
+            onPeekNeed={setPeekNeed}
             selectionSummary={selectionSummary}
             layout={layout.side ? "side" : "sheet"}
             compact={layout.compact}
-            sheetOpen={sheetOpen}
-            onSheetOpen={setSheetOpen}
+            sheetState={sheet}
+            onSheetState={setSheet}
+            peekHeight={peekHeight}
             onCollapse={() => setPanelOpen(false)}
-            handleExtra={
-              occurrences.length > 1 ? (
-                <div className="flex shrink-0 items-center pr-1">
-                  <Button variant="ghost" size="icon" className="size-9" aria-label={t("이전 라벨")} onClick={() => gotoOcc(occIdx < 0 ? -1 : occIdx - 1)}>
-                    <ChevronLeft aria-hidden="true" />
-                  </Button>
-                  <span className="min-w-9 text-center text-xs tabular-nums text-muted-foreground">
-                    {occIdx < 0 ? "–" : occIdx + 1}/{occurrences.length}
-                  </span>
-                  <Button variant="ghost" size="icon" className="size-9" aria-label={t("다음 라벨")} onClick={() => gotoOcc(occIdx + 1)}>
-                    <ChevronRight aria-hidden="true" />
-                  </Button>
-                </div>
-              ) : null
-            }
+            handleExtra={occurrences.length > 1 ? occStepper("pr-1") : null}
+            searchStatus={topNotices ? queryPill : null}
           />
         )}
 
@@ -719,16 +933,9 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
               activeMatch={matchIdx}
               onPick={onPick}
               onRenderError={() => track({ name: "error", params: { type: "render_failed" } })}
+              align={layout.side ? "center" : "top"}
+              controlsRow={!layout.side}
             />
-          )}
-
-          {doc && notice && (
-            <div role="status" className="absolute inset-x-3 bottom-16 mx-auto flex max-w-xl items-start gap-2 rounded-md border border-amber-300 bg-popover px-4 py-3 text-sm shadow-md">
-              <p className="min-w-0 flex-1 leading-relaxed">{t(notice)}</p>
-              <Button variant="ghost" size="icon" className="size-7 shrink-0" aria-label={t("알림 닫기")} onClick={() => setNotice(null)}>
-                <X aria-hidden="true" />
-              </Button>
-            </div>
           )}
 
           {doc && page && layout.side && !panelOpen && (
@@ -738,40 +945,23 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             </Button>
           )}
 
-          {doc && query.trim() && (
-            <div className="absolute left-1/2 top-3 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-md border border-border bg-popover py-1 pl-3 pr-1 text-sm shadow-sm">
-              <span className="min-w-0 truncate font-mono">{query.trim()}</span>
-              <span className="shrink-0 px-2 tabular-nums text-muted-foreground" aria-live="polite">
-                {matches.length ? `${Math.min(matchIdx + 1, matches.length)} / ${matches.length}` : t("도면에 없음")}
-                {exactCount > 0 && exactCount < matches.length && (
-                  <span className="ml-2 text-xs">
-                    {t("정확히 일치")} {exactCount}
-                  </span>
-                )}
-              </span>
-              <Button variant="ghost" size="icon" className="size-7" aria-label={t("이전 위치")} disabled={!matches.length} onClick={() => gotoMatch(matchIdx - 1)}>
-                <ChevronUp aria-hidden="true" />
-              </Button>
-              <Button variant="ghost" size="icon" className="size-7" aria-label={t("다음 위치")} disabled={!matches.length} onClick={() => gotoMatch(matchIdx + 1)}>
-                <ChevronDown aria-hidden="true" />
-              </Button>
-            </div>
-          )}
-
-          {error && (
-            <div
-              role="alert"
-              className="absolute bottom-4 left-1/2 flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-md border border-red-300 bg-popover px-4 py-2 text-sm text-red-700 shadow-md dark:text-red-300"
-            >
-              {t(error)}
-              <Button variant="ghost" size="icon" className="size-7" aria-label={t("알림 닫기")} onClick={() => setError(null)}>
-                <X aria-hidden="true" />
-              </Button>
-            </div>
+          {topNotices ? (
+            (errorBox || noticeBox) && (
+              <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-col items-center gap-2">
+                {/* one at a time on a phone: an error replaces the scan notice while it is shown */}
+                {errorBox || noticeBox}
+              </div>
+            )
+          ) : (
+            <>
+              {queryPill}
+              {noticeBox}
+              {errorBox}
+            </>
           )}
 
           {busy && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/70" role="status" aria-live="polite">
+            <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70" role="status" aria-live="polite">
               <div className="flex items-center gap-3 rounded-md border border-border bg-popover px-4 py-3 text-sm shadow-md">
                 <Spinner />
                 {t(busy, busy.replace(/(\d+\/\d+) 페이지 도면 읽는 중/, "Reading page $1").replace(/(\d+\/\d+) 페이지 연결 분석 중/, "Analyzing connections on page $1").replace("도면 읽는 중", "Reading schematic").replace("완료", "Done"))}
@@ -779,7 +969,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             </div>
           )}
 
-          <div role="status" aria-live="polite" className="busy-note-region pointer-events-none absolute inset-x-3 top-3 z-20 flex justify-center">
+          <div role="status" aria-live="polite" className="busy-note-region pointer-events-none absolute inset-x-3 top-3 z-[45] flex justify-center">
             {busyNote && (
               <p className="busy-note rounded-md border border-border bg-popover px-4 py-2 text-sm shadow-md">
                 {t("읽는 중에는 다른 파일을 열 수 없습니다. 끝난 뒤 다시 열어 주세요.", "Another file can't be opened while this one is being read. Try again when it's done.")}
