@@ -2,12 +2,12 @@ import { useRef } from "react";
 import { FileUp, LockKeyhole, ArrowRight, FileSearch, CircuitBoard } from "lucide-react";
 import { Button } from "./ui.tsx";
 import { CircuitArtwork } from "./circuit-artwork.tsx";
-import { usePageHref, useT } from "../i18n.tsx";
+import { PageLangNote, usePageLink, useT } from "../i18n.tsx";
 
 export function UploadHero({ onFile, onExample, busy }: { onFile: (f: File) => void; onExample: () => void; busy: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const t = useT();
-  const href = usePageHref();
+  const page = usePageLink();
   return <section aria-labelledby="upload-title" className="upload-screen">
     <div className="upload-layout"><div className="upload-copy">
       <p className="eyebrow">SCHEMATIC VIEWER / WORKSPACE</p>
@@ -24,7 +24,7 @@ export function UploadHero({ onFile, onExample, busy }: { onFile: (f: File) => v
         <Button variant="outline" onClick={onExample} disabled={busy}>{t("예제 회로도로 먼저 해 보기", "Try an example schematic")}</Button>
         <p>{t("예제: Olimex ESP32-PoE 공개 회로도 (Apache-2.0)", "Example: Olimex ESP32-PoE open-hardware schematic (Apache-2.0)")}</p>
       </div>
-      <p className="upload-help">{t("처음이라면", "New here?")} <a href={href("/guide/")}>{t("사용법", "Read the guide")}</a> · <a href={href("/help/formats/")}>{t("파일이 열리지 않을 때", "If a file won't open")}</a></p>
+      <p className="upload-help">{t("처음이라면", "New here?")} <a {...page("/guide/")}>{t("사용법", "Read the guide")}<PageLangNote /></a> · <a {...page("/help/formats/")}>{t("파일이 열리지 않을 때", "If a file won't open")}<PageLangNote /></a></p>
     </div><div className="upload-art"><CircuitArtwork /><p>{t("배선을 클릭해 연결을 확인하세요")}</p></div></div>
   </section>;
 }
