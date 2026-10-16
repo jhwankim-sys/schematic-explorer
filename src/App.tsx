@@ -601,7 +601,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
       ? {
           title: sel.name || t("이름 없는 노드"),
           sub: netInfo.here
-            ? t(`배선 ${netInfo.segs}개 · 접점 ${netInfo.dots}개`, `${netInfo.segs} wires · ${netInfo.dots} junctions`)
+            ? t(`배선 ${netInfo.segs}개 · 접점 ${netInfo.dots}개`, `${netInfo.segs} wires · ${netInfo.dots} junctions`, `配線 ${netInfo.segs}本 · 接続点 ${netInfo.dots}個`)
             : t("이 페이지에는 이 노드가 없습니다."),
         }
       : compInfo
@@ -679,7 +679,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
           <div id="selection-detail" className={bodyCls}>
             <p className="mt-1 text-xs text-muted-foreground">
               {netInfo.here
-                ? t(`배선 ${netInfo.segs}개 · 접점 ${netInfo.dots}개`, `${netInfo.segs} wires · ${netInfo.dots} junctions`)
+                ? t(`배선 ${netInfo.segs}개 · 접점 ${netInfo.dots}개`, `${netInfo.segs} wires · ${netInfo.dots} junctions`, `配線 ${netInfo.segs}本 · 接続点 ${netInfo.dots}個`)
                 : t("이 페이지에는 이 노드가 없습니다.")}
             </p>
             {doc && doc.pages.length > 1 && selEntry && (
@@ -1097,12 +1097,12 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
                     ))}
                     {guide > 0 && (
                       <li className="px-2 py-1.5 text-xs text-muted-foreground">
-                        {t(`이름 없는 노드 ${guide}개가 겹쳐 있어 목록으로는 구분할 수 없습니다. 확대해서 고르세요.`, `${guide} unnamed nets overlap here and can't be told apart in a list. Zoom in to choose.`)}
+                        {t(`이름 없는 노드 ${guide}개가 겹쳐 있어 목록으로는 구분할 수 없습니다. 확대해서 고르세요.`, `${guide} unnamed nets overlap here and can't be told apart in a list. Zoom in to choose.`, `名前のないネット${guide}個が重なっているため、一覧では区別できません。拡大して選んでください。`)}
                       </li>
                     )}
                     {choice.more > 0 && (
                       <li className="px-2 py-1.5 text-xs text-muted-foreground">
-                        {t(`이 밖에 ${choice.more}개 더 있습니다. 확대해서 고르세요.`, `${choice.more} more here. Zoom in to choose.`)}
+                        {t(`이 밖에 ${choice.more}개 더 있습니다. 확대해서 고르세요.`, `${choice.more} more here. Zoom in to choose.`, `ほか${choice.more}個は拡大して選んでください。`)}
                       </li>
                     )}
                     <li>
@@ -1129,7 +1129,8 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/70" role="status" aria-live="polite">
               <div className="flex items-center gap-3 rounded-md border border-border bg-popover px-4 py-3 text-sm shadow-md">
                 <Spinner />
-                {t(busy, busy.replace(/(\d+\/\d+) 페이지 도면 읽는 중/, "Reading page $1").replace(/(\d+\/\d+) 페이지 연결 분석 중/, "Analyzing connections on page $1").replace("도면 읽는 중", "Reading schematic").replace("완료", "Done"))}
+                {t(busy, busy.replace(/(\d+\/\d+) 페이지 도면 읽는 중/, "Reading page $1").replace(/(\d+\/\d+) 페이지 연결 분석 중/, "Analyzing connections on page $1").replace("도면 읽는 중", "Reading schematic").replace("완료", "Done"),
+                  busy.replace(/(\d+\/\d+) 페이지 도면 읽는 중/, "図面を読み込み中（$1 ページ）").replace(/(\d+\/\d+) 페이지 연결 분석 중/, "接続を解析中（$1 ページ）").replace("도면 읽는 중", "図面を読み込み中").replace("완료", "完了"))}
               </div>
             </div>
           )}
