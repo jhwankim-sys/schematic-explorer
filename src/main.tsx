@@ -5,16 +5,19 @@ import { ArrowRight, Check, CircuitBoard, LockKeyhole, FileSearch, Globe, Waypoi
 import "./index.css";
 import { App } from "./App.tsx";
 import { CircuitArtwork } from "./components/circuit-artwork.tsx";
-import { LanguageContext, usePageHref, useT, type Language } from "./i18n.tsx";
+import { LanguageContext, PageLangNote, usePageHref, usePageLink, useT, type Language } from "./i18n.tsx";
 import { initAnalytics } from "./lib/analytics.ts";
 
 function Website() {
   const [language, setLanguage] = useState<Language>(() => {
-    // the static pages link here with ?lang=en / ?lang=ko so the tool opens in the reader's language
+    // the static pages link here with ?lang=en / ?lang=ko so the tool opens in the reader's language;
+    // any valid ?lang= comes before the saved choice, an unknown value is ignored
+    const known = (v: string | null): v is Language => v === "ko" || v === "en" || v === "ja";
     const asked = new URLSearchParams(window.location.search).get("lang");
-    if (asked === "ko" || asked === "en") return asked;
-    try { const saved = localStorage.getItem("schematic-viewer-language"); if (saved === "ko" || saved === "en") return saved; } catch { /* Storage can be disabled. */ }
-    return navigator.language.toLowerCase().startsWith("ko") ? "ko" : "en";
+    if (known(asked)) return asked;
+    try { const saved = localStorage.getItem("schematic-viewer-language"); if (known(saved)) return saved; } catch { /* Storage can be disabled. */ }
+    const browser = navigator.language.toLowerCase();
+    return browser.startsWith("ko") ? "ko" : browser.startsWith("ja") ? "ja" : "en";
   });
   useEffect(() => {
     document.documentElement.lang = language;
@@ -27,6 +30,7 @@ function Website() {
 function WebsiteContent({ language, onLanguage }: { language: Language; onLanguage: (language: Language) => void }) {
   const t = useT();
   const href = usePageHref();
+  const page = usePageLink();
   const [route, setRoute] = useState(window.location.hash);
   useEffect(() => {
     // the privacy notice used to be a section of this page (#privacy); it is a page of its own now
@@ -72,17 +76,16 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
     ["/help/formats/", t("지원 형식과 오류 해결", "Supported files and troubleshooting"), t("어떤 PDF가 잘 열리는지, 열리지 않을 때 무엇을 확인할지.", "Which PDFs work best and what to check when one won't open.")],
     ["/faq/", t("자주 묻는 질문", "FAQ"), t("파일 보안, 정확도, 모바일 사용, 비용에 대한 질문과 답.", "Questions about file privacy, accuracy, mobile use and cost.")],
   ] as const;
-  const languageSwitch = <div className="language-switch" role="group" aria-label={t("언어 선택", "Language")}><button type="button" aria-pressed={language === "ko"} onClick={() => onLanguage("ko")}>한국어</button><button type="button" aria-pressed={language === "en"} onClick={() => onLanguage("en")}>EN</button></div>;
-  // the workspace toolbar: the same switch, or a small menu when the toolbar is narrow (index.css)
-  const workspaceLanguage = <><div className="lang-wide">{languageSwitch}</div><LanguageMenu language={language} onLanguage={onLanguage} /></>;
+  // three languages: the landing header and the workspace toolbar both use the language menu (not a row of buttons)
+  const languageMenu = <LanguageMenu language={language} onLanguage={onLanguage} />;
   // the workspace has a single header row: the brand and language switch move into the viewer toolbar
   const workspaceBrand = <a className="brand tap" href="#home" aria-label={`Schematic Viewer · ${t("홈으로")}`}><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>;
   return <div className={viewer ? "site-shell workspace-shell" : "site-shell"}>
     <header className="site-header" hidden={viewer}><a className="brand" href="#home" aria-label="Schematic Viewer"><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>
-      <nav aria-label={t("사이트 메뉴", "Site navigation")}><a href={href("/guide/")}>{t("사용법", "Guide")}</a><a href={href("/faq/")}>FAQ</a><a href={href("/about/")}>{t("소개", "About")}</a><a href={href("/contact/")}>{t("문의", "Contact")}</a></nav>
-      <div className="header-actions">{languageSwitch}<a className="header-start" href="#viewer" onClick={() => { focusTool.current = true; }}><span className="hs-long">{t("시작하기", "Get started")}</span><span className="hs-short">{t("도구 열기", "Open the tool")}</span><ArrowRight size={15} aria-hidden="true" /></a></div>
+      <nav aria-label={t("사이트 메뉴", "Site navigation")}><a {...page("/guide/")}>{t("사용법", "Guide")}<PageLangNote /></a><a {...page("/faq/")}>FAQ<PageLangNote /></a><a {...page("/about/")}>{t("소개", "About")}<PageLangNote /></a><a {...page("/contact/")}>{t("문의", "Contact")}<PageLangNote /></a></nav>
+      <div className="header-actions">{languageMenu}<a className="header-start" href="#viewer" onClick={() => { focusTool.current = true; }}><span className="hs-long">{t("시작하기", "Get started")}</span><span className="hs-short">{t("도구 열기", "Open the tool")}</span><ArrowRight size={15} aria-hidden="true" /></a></div>
     </header>
-    <div className="workspace" hidden={!viewer}><App active={viewer} autoExample={route === "#example"} headerStart={workspaceBrand} headerEnd={workspaceLanguage} /></div>
+    <div className="workspace" hidden={!viewer}><App active={viewer} autoExample={route === "#example"} headerStart={workspaceBrand} headerEnd={languageMenu} /></div>
     {!viewer && <><main id="home">
       <section className="landing-hero" aria-labelledby="welcome"><div className="hero-layout"><div className="hero-copy">
         <p className="eyebrow">SCHEMATIC VIEWER / BROWSER WORKSPACE</p><h1 id="welcome">{t("복잡한 회로도,", "Complex schematics.")}<br /><span>{t("연결은 클릭 한 번으로.", "Clear connections.")}</span></h1>
@@ -100,16 +103,16 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
         <section className="feature-grid" aria-label={t("주요 기능", "Key features")}>{features.map(([Icon, title, description], i) => <article key={i}><Icon aria-hidden="true" /><span className="feature-number">0{i + 1}</span><h2>{title}</h2><p>{description}</p></article>)}</section>
         <section id="about" className="editorial-section" aria-labelledby="about-title"><div><p className="eyebrow">01 / ABOUT</p><h2 id="about-title">{t("도면을 읽는 데서 그치지 않고\n연결까지 이해하도록 돕습니다.", "Beyond reading.\nUnderstand the connections.")}</h2></div><div>
           <p>{t("Schematic Viewer는 전자회로를 공부하거나 도면을 검토할 때 멀리 떨어진 같은 신호를 찾는 수고를 줄이는 무료 웹 도구입니다. PDF의 선과 글자를 분석하고, 연결을 원본 도면 위에 강조합니다.", "Schematic Viewer is a free web tool for studying electronics and reviewing drawings. It analyzes lines and text in your PDF, then highlights inferred connections on the original drawing.")}</p>
-          <p>{t("예를 들어 +5V 배선을 선택해 같은 전원으로 이어진 곳을 확인하거나, R1을 검색해 부품 위치로 이동할 수 있습니다.", "For example, select a +5V wire to inspect its inferred power net, or search R1 to locate a component.")} <a className="text-link" href={href("/about/")}>{t("소개 더 보기", "More about the project")} →</a></p>
+          <p>{t("예를 들어 +5V 배선을 선택해 같은 전원으로 이어진 곳을 확인하거나, R1을 검색해 부품 위치로 이동할 수 있습니다.", "For example, select a +5V wire to inspect its inferred power net, or search R1 to locate a component.")} <a className="text-link" {...page("/about/")}>{t("소개 더 보기", "More about the project")}<PageLangNote /> →</a></p>
           <aside className="info-note"><h3>{t("지원 범위와 분석 한계", "Supported files and limitations")}</h3><p>{t("벡터 PDF를 권장하며 스캔·이미지 PDF는 지원하지 않습니다. 글자를 선으로만 내보낸 PDF는 이름 검색이 제한될 수 있습니다. 페이지별로 연결을 추정하므로 설계·수리 판단 전에는 원본과 CAD 자료로 확인하세요.", "Vector PDFs are recommended. Scanned or image-only PDFs are not supported, and outlined text may limit name search. Connections are inferred per page; verify them against the original drawing and CAD data before making design or repair decisions.")}</p></aside>
         </div></section>
-        <section id="guide" className="guide-section" aria-labelledby="guide-title"><p className="eyebrow">02 / QUICK START</p><div className="section-heading"><h2 id="guide-title">{t("도면 탐색, 네 단계로 시작하기", "Four steps to your first connection")}</h2><a className="text-link" href={href("/guide/")}>{t("전체 사용법", "Full guide")} →</a></div><ol className="steps-grid">{steps.map(([title, description], i) => <li key={i}><span>0{i + 1}</span><h3>{title}</h3><p>{description}</p></li>)}</ol><p className="guide-tip">{t("파일이 열리지 않으면 암호화·손상 여부를 확인하세요. 분석이 부정확하면 선과 글자가 포함된 PDF로 다시 내보내 보세요.", "If a file will not open, check whether it is encrypted or damaged. For better analysis, export a PDF that contains vector lines and text.")} <a href={href("/help/formats/")}>{t("해결 방법 보기", "Troubleshooting")} →</a></p></section>
+        <section id="guide" className="guide-section" aria-labelledby="guide-title"><p className="eyebrow">02 / QUICK START</p><div className="section-heading"><h2 id="guide-title">{t("도면 탐색, 네 단계로 시작하기", "Four steps to your first connection")}</h2><a className="text-link" {...page("/guide/")}>{t("전체 사용법", "Full guide")}<PageLangNote /> →</a></div><ol className="steps-grid">{steps.map(([title, description], i) => <li key={i}><span>0{i + 1}</span><h3>{title}</h3><p>{description}</p></li>)}</ol><p className="guide-tip">{t("파일이 열리지 않으면 암호화·손상 여부를 확인하세요. 분석이 부정확하면 선과 글자가 포함된 PDF로 다시 내보내 보세요.", "If a file will not open, check whether it is encrypted or damaged. For better analysis, export a PDF that contains vector lines and text.")} <a {...page("/help/formats/")}>{t("해결 방법 보기", "Troubleshooting")}<PageLangNote /> →</a></p></section>
         <section className="guide-section" aria-labelledby="learn-title"><p className="eyebrow">03 / LEARN</p><div className="section-heading"><h2 id="learn-title">{t("읽을거리", "Guides and articles")}</h2></div>
-          <ul className="article-grid">{articles.map(([path, title, description]) => <li key={path}><a href={href(path)}><h3>{title}</h3><p>{description}</p><span>{t("읽기", "Read")} →</span></a></li>)}</ul>
+          <ul className="article-grid">{articles.map(([path, title, description]) => <li key={path}><a {...page(path)}><h3>{title}</h3><p>{description}</p><span>{t("읽기", "Read")}<PageLangNote /> →</span></a></li>)}</ul>
         </section>
       </div>
     </main><footer className="site-footer"><a className="brand" href="#home"><CircuitBoard size={20} /><span>Schematic <strong>Viewer</strong></span></a><span>© 2026 Schematic Viewer</span><div>
-      <a href={href("/about/")}>{t("소개", "About")}</a><a href={href("/contact/")}>{t("문의", "Contact")}</a><a href={href("/privacy/")}>{t("개인정보처리방침", "Privacy policy")}</a><a href={href("/terms/")}>{t("이용약관", "Terms of use")}</a><a href={href("/changelog/")}>{t("업데이트 기록", "Changelog")}</a>
+      <a {...page("/about/")}>{t("소개", "About")}<PageLangNote /></a><a {...page("/contact/")}>{t("문의", "Contact")}<PageLangNote /></a><a {...page("/privacy/")}>{t("개인정보처리방침", "Privacy policy")}<PageLangNote /></a><a {...page("/terms/")}>{t("이용약관", "Terms of use")}<PageLangNote /></a><a {...page("/changelog/")}>{t("업데이트 기록", "Changelog")}<PageLangNote /></a>
     </div></footer></>}
   </div>;
 }
@@ -117,11 +120,12 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
 const LANGUAGES: { code: Language; label: string; short: string }[] = [
   { code: "ko", label: "한국어", short: "KO" },
   { code: "en", label: "English", short: "EN" },
+  { code: "ja", label: "日本語", short: "JA" },
 ];
 
 /**
- * Language menu for a narrow workspace toolbar (shown instead of the two-button switch there, so the
- * page controls and 44px buttons fit in one row). Menu button pattern: Enter / Space / ArrowDown
+ * Language menu for the landing header and the workspace toolbar (one small button, so the header
+ * and the page controls with 44px buttons fit in one row). Menu button pattern: Enter / Space / ArrowDown
  * open it and focus the current language, arrows move, Esc closes and returns focus, Tab leaves.
  */
 function LanguageMenu({ language, onLanguage }: { language: Language; onLanguage: (language: Language) => void }) {

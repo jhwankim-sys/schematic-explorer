@@ -280,7 +280,7 @@ export function SchematicSidebar({
               <>
                 <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                  {t(`노드 ${nets.length} · 부품 ${comps.length}`, `${nets.length} nets · ${comps.length} parts`)}
+                  {t(`노드 ${nets.length} · 부품 ${comps.length}`, `${nets.length} nets · ${comps.length} parts`, `ネット ${nets.length} · 部品 ${comps.length}`)}
                 </span>
               </>
             )}
@@ -430,7 +430,7 @@ export function SchematicSidebar({
           {signal.length > 0 && <NetGroup title={t("신호")} items={signal} selected={selectedNet} onPick={onPickNet} />}
           {!q && unnamedCount > 0 && (
             <p className="px-2 pt-4 text-xs text-muted-foreground">
-              {t(`라벨이 없는 노드 ${unnamedCount.toLocaleString()}개는 도면에서 배선을 클릭해 확인할 수 있습니다.`, `Click wires in the drawing to inspect ${unnamedCount.toLocaleString()} unlabeled nets.`)}
+              {t(`라벨이 없는 노드 ${unnamedCount.toLocaleString()}개는 도면에서 배선을 클릭해 확인할 수 있습니다.`, `Click wires in the drawing to inspect ${unnamedCount.toLocaleString()} unlabeled nets.`, `ラベルのないネット${unnamedCount.toLocaleString()}個は、図面で配線をクリックすると確認できます。`)}
             </p>
           )}
         </div>
@@ -510,7 +510,7 @@ function NetGroup({
                 {n.labelCount > 1 && (
                   <span
                     className="shrink-0 text-xs tabular-nums text-muted-foreground"
-                    aria-label={t(`라벨 ${n.labelCount}곳`, `${n.labelCount} labels`)}
+                    aria-label={t(`라벨 ${n.labelCount}곳`, `${n.labelCount} labels`, `ラベル ${n.labelCount}か所`)}
                     title={active ? t("같은 이름 라벨로 차례로 이동") : undefined}
                   >
                     ×{n.labelCount}
