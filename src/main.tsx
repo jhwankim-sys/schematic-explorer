@@ -154,7 +154,11 @@ function LanguageMenu({ language, onLanguage }: { language: Language; onLanguage
         list[(i + (e.key === "ArrowDown" ? 1 : list.length - 1)) % list.length]?.focus();
       }
     }}
-    onBlur={(e) => { if (open && !boxRef.current?.contains(e.relatedTarget as Node)) setOpen(false); }}>
+    // close when focus moves to something outside the menu (Tab, a focused control). Safari does not focus a
+    // button on tap or click: the focused item blurs with no relatedTarget just before the click on the item
+    // that was tapped, so a blur without one must not close the list (a tap outside closes it through the
+    // pointerdown listener above).
+    onBlur={(e) => { if (open && e.relatedTarget && !boxRef.current?.contains(e.relatedTarget as Node)) setOpen(false); }}>
     <button ref={buttonRef} type="button" className="tap lang-menu-button" aria-haspopup="menu" aria-expanded={open} aria-controls={open ? listId : undefined}
       aria-label={`${t("언어 선택", "Language")}: ${current.label}`}
       onClick={() => setOpen((o) => !o)}
