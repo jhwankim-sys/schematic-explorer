@@ -2,7 +2,7 @@ import type { PageDef } from "./index.ts";
 
 export const about: PageDef = {
   slug: "about",
-  updated: "2026-10-13",
+  updated: "2026-10-16",
   related: ["guide", "faq", "contact"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -16,7 +16,7 @@ export const about: PageDef = {
 <li><strong>지원 형식</strong>: KiCad, Altium, Eagle, OrCAD 등 회로도 프로그램에서 내보낸 PDF</li>
 <li><strong>파일 처리</strong>: 모든 분석은 브라우저 안에서 이루어지며, 파일은 서버로 전송되거나 저장되지 않습니다</li>
 <li><strong>비용</strong>: 무료, 가입 없음</li>
-<li><strong>언어</strong>: 한국어, English</li>
+<li><strong>언어</strong>: 한국어, English, 日本語</li>
 </ul>
 
 <h2>왜 만들었나요</h2>
@@ -50,7 +50,7 @@ export const about: PageDef = {
 <li><strong>Supported files</strong>: PDFs exported from schematic programs such as KiCad, Altium, Eagle and OrCAD</li>
 <li><strong>File handling</strong>: all analysis happens in your browser; files are never uploaded or stored on a server</li>
 <li><strong>Cost</strong>: free, no sign-up</li>
-<li><strong>Languages</strong>: Korean, English</li>
+<li><strong>Languages</strong>: Korean, English, Japanese</li>
 </ul>
 
 <h2>Why it exists</h2>

@@ -1,4 +1,4 @@
-// 콘텐츠 페이지 목록. 글은 페이지별 파일에 한국어·영어를 함께 둡니다.
+// 콘텐츠 페이지 목록. 글은 페이지별 파일에 한국어·영어를 함께 두고, 일본어는 ja/ 폴더에 따로 둡니다.
 // 사실과 다른 내용을 쓰지 않도록, 도구의 동작이 바뀌면 이 글도 함께 고쳐 주세요.
 import { about } from "./about.ts";
 import { contact } from "./contact.ts";
@@ -12,7 +12,7 @@ import { readSchematic } from "./read-schematic.ts";
 import { faq } from "./faq.ts";
 import { changelog } from "./changelog.ts";
 
-export type Lang = "ko" | "en";
+export type Lang = "ko" | "en" | "ja";
 
 /** what a page's text may depend on */
 export interface Ctx {
