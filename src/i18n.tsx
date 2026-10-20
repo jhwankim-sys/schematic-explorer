@@ -156,18 +156,13 @@ export function useT() {
     : language === "ja" ? ja ?? japanese[ko] ?? en ?? english[ko] ?? ko
     : ko, [language]);
 }
-/** link to a static content page ("/guide/") in the current language ("/en/guide/"); there are no Japanese pages yet, so ja links to the English one */
+/** link to a static content page ("/guide/") in the current language ("/en/guide/", "/ja/guide/") */
 export function usePageHref() {
   const language = useContext(LanguageContext);
-  return useCallback((path: string) => (language === "ko" ? path : "/en" + path), [language]);
+  return useCallback((path: string) => (language === "ko" ? path : `/${language}${path}`), [language]);
 }
-/** attributes for a link to a static content page: href, and hreflang when it is in another language than the screen */
+/** attributes for a link to a static content page (the page exists in every language) */
 export function usePageLink() {
   const href = usePageHref();
-  const language = useContext(LanguageContext);
-  return useCallback((path: string) => ({ href: href(path), hrefLang: language === "ja" ? "en" : undefined }), [href, language]);
-}
-/** after the text of such a link: says the page is in English (Japanese screen only) */
-export function PageLangNote() {
-  return useContext(LanguageContext) === "ja" ? <span className="page-lang">（英語）</span> : null;
+  return useCallback((path: string) => ({ href: href(path) }), [href]);
 }

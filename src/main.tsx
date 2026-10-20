@@ -5,7 +5,7 @@ import { ArrowRight, Check, CircuitBoard, LockKeyhole, FileSearch, Globe, Waypoi
 import "./index.css";
 import { App } from "./App.tsx";
 import { CircuitArtwork } from "./components/circuit-artwork.tsx";
-import { LanguageContext, PageLangNote, usePageHref, usePageLink, useT, type Language } from "./i18n.tsx";
+import { LanguageContext, usePageHref, usePageLink, useT, type Language } from "./i18n.tsx";
 import { initAnalytics } from "./lib/analytics.ts";
 
 function Website() {
@@ -82,7 +82,7 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
   const workspaceBrand = <a className="brand tap" href="#home" aria-label={`Schematic Viewer · ${t("홈으로")}`}><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>;
   return <div className={viewer ? "site-shell workspace-shell" : "site-shell"}>
     <header className="site-header" hidden={viewer}><a className="brand" href="#home" aria-label="Schematic Viewer"><CircuitBoard aria-hidden="true" /><span>Schematic <strong>Viewer</strong></span></a>
-      <nav aria-label={t("사이트 메뉴", "Site navigation")}><a {...page("/guide/")}>{t("사용법", "Guide")}<PageLangNote /></a><a {...page("/faq/")}>FAQ<PageLangNote /></a><a {...page("/about/")}>{t("소개", "About")}<PageLangNote /></a><a {...page("/contact/")}>{t("문의", "Contact")}<PageLangNote /></a></nav>
+      <nav aria-label={t("사이트 메뉴", "Site navigation")}><a {...page("/guide/")}>{t("사용법", "Guide")}</a><a {...page("/faq/")}>FAQ</a><a {...page("/about/")}>{t("소개", "About")}</a><a {...page("/contact/")}>{t("문의", "Contact")}</a></nav>
       <div className="header-actions">{languageMenu}<a className="header-start" href="#viewer" onClick={() => { focusTool.current = true; }}><span className="hs-long">{t("시작하기", "Get started")}</span><span className="hs-short">{t("도구 열기", "Open the tool")}</span><ArrowRight size={15} aria-hidden="true" /></a></div>
     </header>
     <div className="workspace" hidden={!viewer}><App active={viewer} autoExample={route === "#example"} headerStart={workspaceBrand} headerEnd={languageMenu} /></div>
@@ -103,16 +103,16 @@ function WebsiteContent({ language, onLanguage }: { language: Language; onLangua
         <section className="feature-grid" aria-label={t("주요 기능", "Key features")}>{features.map(([Icon, title, description], i) => <article key={i}><Icon aria-hidden="true" /><span className="feature-number">0{i + 1}</span><h2>{title}</h2><p>{description}</p></article>)}</section>
         <section id="about" className="editorial-section" aria-labelledby="about-title"><div><p className="eyebrow">01 / ABOUT</p><h2 id="about-title">{t("도면을 읽는 데서 그치지 않고\n연결까지 이해하도록 돕습니다.", "Beyond reading.\nUnderstand the connections.")}</h2></div><div>
           <p>{t("Schematic Viewer는 전자회로를 공부하거나 도면을 검토할 때 멀리 떨어진 같은 신호를 찾는 수고를 줄이는 무료 웹 도구입니다. PDF의 선과 글자를 분석하고, 연결을 원본 도면 위에 강조합니다.", "Schematic Viewer is a free web tool for studying electronics and reviewing drawings. It analyzes lines and text in your PDF, then highlights inferred connections on the original drawing.")}</p>
-          <p>{t("예를 들어 +5V 배선을 선택해 같은 전원으로 이어진 곳을 확인하거나, R1을 검색해 부품 위치로 이동할 수 있습니다.", "For example, select a +5V wire to inspect its inferred power net, or search R1 to locate a component.")} <a className="text-link" {...page("/about/")}>{t("소개 더 보기", "More about the project")}<PageLangNote /> →</a></p>
+          <p>{t("예를 들어 +5V 배선을 선택해 같은 전원으로 이어진 곳을 확인하거나, R1을 검색해 부품 위치로 이동할 수 있습니다.", "For example, select a +5V wire to inspect its inferred power net, or search R1 to locate a component.")} <a className="text-link" {...page("/about/")}>{t("소개 더 보기", "More about the project")} →</a></p>
           <aside className="info-note"><h3>{t("지원 범위와 분석 한계", "Supported files and limitations")}</h3><p>{t("벡터 PDF를 권장하며 스캔·이미지 PDF는 지원하지 않습니다. 글자를 선으로만 내보낸 PDF는 이름 검색이 제한될 수 있습니다. 페이지별로 연결을 추정하므로 설계·수리 판단 전에는 원본과 CAD 자료로 확인하세요.", "Vector PDFs are recommended. Scanned or image-only PDFs are not supported, and outlined text may limit name search. Connections are inferred per page; verify them against the original drawing and CAD data before making design or repair decisions.")}</p></aside>
         </div></section>
-        <section id="guide" className="guide-section" aria-labelledby="guide-title"><p className="eyebrow">02 / QUICK START</p><div className="section-heading"><h2 id="guide-title">{t("도면 탐색, 네 단계로 시작하기", "Four steps to your first connection")}</h2><a className="text-link" {...page("/guide/")}>{t("전체 사용법", "Full guide")}<PageLangNote /> →</a></div><ol className="steps-grid">{steps.map(([title, description], i) => <li key={i}><span>0{i + 1}</span><h3>{title}</h3><p>{description}</p></li>)}</ol><p className="guide-tip">{t("파일이 열리지 않으면 암호화·손상 여부를 확인하세요. 분석이 부정확하면 선과 글자가 포함된 PDF로 다시 내보내 보세요.", "If a file will not open, check whether it is encrypted or damaged. For better analysis, export a PDF that contains vector lines and text.")} <a {...page("/help/formats/")}>{t("해결 방법 보기", "Troubleshooting")}<PageLangNote /> →</a></p></section>
+        <section id="guide" className="guide-section" aria-labelledby="guide-title"><p className="eyebrow">02 / QUICK START</p><div className="section-heading"><h2 id="guide-title">{t("도면 탐색, 네 단계로 시작하기", "Four steps to your first connection")}</h2><a className="text-link" {...page("/guide/")}>{t("전체 사용법", "Full guide")} →</a></div><ol className="steps-grid">{steps.map(([title, description], i) => <li key={i}><span>0{i + 1}</span><h3>{title}</h3><p>{description}</p></li>)}</ol><p className="guide-tip">{t("파일이 열리지 않으면 암호화·손상 여부를 확인하세요. 분석이 부정확하면 선과 글자가 포함된 PDF로 다시 내보내 보세요.", "If a file will not open, check whether it is encrypted or damaged. For better analysis, export a PDF that contains vector lines and text.")} <a {...page("/help/formats/")}>{t("해결 방법 보기", "Troubleshooting")} →</a></p></section>
         <section className="guide-section" aria-labelledby="learn-title"><p className="eyebrow">03 / LEARN</p><div className="section-heading"><h2 id="learn-title">{t("읽을거리", "Guides and articles")}</h2></div>
-          <ul className="article-grid">{articles.map(([path, title, description]) => <li key={path}><a {...page(path)}><h3>{title}</h3><p>{description}</p><span>{t("읽기", "Read")}<PageLangNote /> →</span></a></li>)}</ul>
+          <ul className="article-grid">{articles.map(([path, title, description]) => <li key={path}><a {...page(path)}><h3>{title}</h3><p>{description}</p><span>{t("읽기", "Read")} →</span></a></li>)}</ul>
         </section>
       </div>
     </main><footer className="site-footer"><a className="brand" href="#home"><CircuitBoard size={20} /><span>Schematic <strong>Viewer</strong></span></a><span>© 2026 Schematic Viewer</span><div>
-      <a {...page("/about/")}>{t("소개", "About")}<PageLangNote /></a><a {...page("/contact/")}>{t("문의", "Contact")}<PageLangNote /></a><a {...page("/privacy/")}>{t("개인정보처리방침", "Privacy policy")}<PageLangNote /></a><a {...page("/terms/")}>{t("이용약관", "Terms of use")}<PageLangNote /></a><a {...page("/changelog/")}>{t("업데이트 기록", "Changelog")}<PageLangNote /></a>
+      <a {...page("/about/")}>{t("소개", "About")}</a><a {...page("/contact/")}>{t("문의", "Contact")}</a><a {...page("/privacy/")}>{t("개인정보처리방침", "Privacy policy")}</a><a {...page("/terms/")}>{t("이용약관", "Terms of use")}</a><a {...page("/changelog/")}>{t("업데이트 기록", "Changelog")}</a>
     </div></footer></>}
   </div>;
 }
