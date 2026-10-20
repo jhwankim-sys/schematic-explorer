@@ -255,10 +255,8 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-
    breaking instead of the keep-all used for Korean (including the two headings that set it themselves) */
 :lang(ja) body { font-family: "Segoe UI Variable", "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", system-ui, sans-serif; word-break: normal; line-break: strict; }
 :lang(ja) .hero-copy h1, :lang(ja) .hero-description { word-break: normal; line-break: strict; }
-:lang(ja) .site-header nav { flex-wrap: wrap; row-gap: 6px; }
 /* the fact labels (up to 8 Japanese characters) on one line; phones stack them anyway */
 @media (min-width: 651px) { :lang(ja) .hero-facts li { grid-template-columns: 8.5em 1fr; } }
 /* phones: the Japanese second heading line (11 characters, no word spaces) fits one line instead of leaving "で。" alone */
 @media (max-width: 650px) { :lang(ja) .hero-copy h1 { font-size: min(35px, 7.6vw); } }
-/* "(English)" after a link to a page that exists in English only */
-.page-lang { font-size: .85em; font-weight: 400; opacity: .8; }
+

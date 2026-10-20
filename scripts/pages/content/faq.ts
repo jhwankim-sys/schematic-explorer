@@ -2,7 +2,7 @@ import type { PageDef } from "./index.ts";
 
 export const faq: PageDef = {
   slug: "faq",
-  updated: "2026-10-13",
+  updated: "2026-10-16",
   related: ["guide", "help/formats", "privacy"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -43,8 +43,8 @@ export const faq: PageDef = {
 <p>아니요. Schematic Viewer는 보기 전용입니다. 대신 노드 목록과 부품 목록을 CSV로 저장해 엑셀 등에서 정리할 수 있습니다.</p>
 <h3>KiCad, Altium 원본 파일을 바로 열 수 있나요?</h3>
 <p>현재는 PDF만 엽니다. 회로도 프로그램에서 PDF로 내보낸 뒤 열어 주세요.</p>
-<h3>영어로도 쓸 수 있나요?</h3>
-<p>네. 화면 위쪽의 언어 버튼(한국어 / EN)으로 한국어와 영어를 바꿀 수 있고, 선택한 언어는 다음 방문 때도 유지됩니다.</p>
+<h3>다른 언어로도 쓸 수 있나요?</h3>
+<p>네. 화면 위쪽의 언어 메뉴(지구본 아이콘)에서 한국어, English, 日本語를 바꿀 수 있고, 선택한 언어는 다음 방문 때도 유지됩니다.</p>
 <h3>먼저 체험해 볼 수 있나요?</h3>
 <p><a href="${tool("#example")}">예제 회로도</a>를 바로 열어 볼 수 있습니다. 따라 하기 안내는 <a href="${href("learn/example")}">예제로 따라 하기</a>에 있습니다.</p>
 `,
@@ -86,8 +86,8 @@ export const faq: PageDef = {
 <p>No — Schematic Viewer is view-only. You can save the net and part lists as CSV and work with them in a spreadsheet.</p>
 <h3>Can it open KiCad or Altium source files?</h3>
 <p>Only PDFs for now. Export a PDF from your schematic program first.</p>
-<h3>Is it available in English?</h3>
-<p>Yes. Switch between Korean and English with the language buttons (한국어 / EN) at the top; your choice is remembered for next time.</p>
+<h3>Is it available in other languages?</h3>
+<p>Yes. Switch between Korean, English and Japanese with the language menu (globe icon) at the top; your choice is remembered for next time.</p>
 <h3>Can I try it first?</h3>
 <p>Open the <a href="${tool("#example")}">example schematic</a> right away, and follow along with the <a href="${href("learn/example")}">step-by-step example</a>.</p>
 `,

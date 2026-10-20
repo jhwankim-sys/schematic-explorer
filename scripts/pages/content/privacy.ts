@@ -7,9 +7,10 @@ const EFFECTIVE = "2026-10-09";
 // The analytics section switches automatically with site.config.json (ga4MeasurementId).
 export const privacy: PageDef = {
   slug: "privacy",
-  // last revision: section 4 rewritten to match the site (no ads, no consent banner yet).
+  // last revision: section 2, the language setting now lists Japanese (the tool has three languages).
+  // Before that (2026-10-13): section 4 rewritten to match the site (no ads, no consent banner yet).
   // The same date is shown at the top as "last updated" and below as "last revised".
-  updated: "2026-10-13",
+  updated: "2026-10-16",
   cta: false,
   related: ["terms", "contact", "faq"],
   content: ({ lang, href, email, analytics, updated }) => {
@@ -48,7 +49,7 @@ export const privacy: PageDef = {
 <thead><tr><th>항목</th><th>처리 주체와 목적</th><th>보관</th></tr></thead>
 <tbody>
 <tr><td>접속 기록(IP 주소, 요청한 주소, 시간, 브라우저 정보)</td><td>호스팅 사업자 GitHub(GitHub Pages)가 서비스 제공과 보안을 위해 자동으로 기록합니다. 운영자는 이 기록을 받아 보거나 이용하지 않습니다.</td><td><a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub 개인정보 처리방침</a>에 따름</td></tr>
-<tr><td>언어 설정</td><td>선택한 언어(한국어/English)를 다음 방문 때 유지하려고 이용자 브라우저의 localStorage에 저장합니다. 서버로 전송되지 않습니다.</td><td>이용자가 브라우저 데이터를 지울 때까지</td></tr>
+<tr><td>언어 설정</td><td>선택한 언어(한국어/English/日本語)를 다음 방문 때 유지하려고 이용자 브라우저의 localStorage에 저장합니다. 서버로 전송되지 않습니다.</td><td>이용자가 브라우저 데이터를 지울 때까지</td></tr>
 <tr><td>방문 통계</td><td>아래 3항 참고</td><td>Google 정책에 따름</td></tr>
 <tr><td>광고 관련 정보</td><td>현재 광고가 없어 처리하지 않습니다(아래 4항).</td><td>해당 없음</td></tr>
 <tr><td>문의 내용(이메일 주소, 보낸 내용)</td><td>이용자가 이메일로 연락한 경우 답변을 위해서만 사용합니다.</td><td>답변 완료 후 1년 이내 삭제</td></tr>
@@ -81,7 +82,7 @@ ${analytics ? `<p>위 3항의 방문 통계(Google Analytics)는 이미 사용�
 
 <h2>9. 방침의 변경</h2>
 <p>이 방침을 바꾸면 이 페이지에 바뀐 내용과 시행일을 게시합니다.</p>
-<p>처음 시행: ${EFFECTIVE} · 최근 개정: ${updated}(4항 광고와 쿠키를 현재 운영 상태에 맞게 고침)</p>
+<p>처음 시행: ${EFFECTIVE} · 최근 개정: ${updated}(2항 언어 설정에 일본어 추가) · 이전 개정: 2026-10-13(4항 광고와 쿠키를 현재 운영 상태에 맞게 고침)</p>
 `,
       };
     }
@@ -118,7 +119,7 @@ ${analytics ? `<p>위 3항의 방문 통계(Google Analytics)는 이미 사용�
 <thead><tr><th>Item</th><th>Who handles it and why</th><th>Retention</th></tr></thead>
 <tbody>
 <tr><td>Access logs (IP address, requested URL, time, browser)</td><td>Recorded automatically by the host, GitHub (GitHub Pages), to provide and secure the service. The operator does not receive or use these logs.</td><td>Per the <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy statement</a></td></tr>
-<tr><td>Language setting</td><td>Your chosen language (Korean/English) is kept in your browser's localStorage so it is remembered next time. It is not sent anywhere.</td><td>Until you clear browser data</td></tr>
+<tr><td>Language setting</td><td>Your chosen language (Korean/English/Japanese) is kept in your browser's localStorage so it is remembered next time. It is not sent anywhere.</td><td>Until you clear browser data</td></tr>
 <tr><td>Visitor statistics</td><td>See section 3</td><td>Per Google's policies</td></tr>
 <tr><td>Advertising data</td><td>None — the site currently has no ads (section 4).</td><td>Not applicable</td></tr>
 <tr><td>Messages you send (email address, content)</td><td>Used only to reply when you contact us by email.</td><td>Deleted within one year after the reply</td></tr>
@@ -150,7 +151,7 @@ ${analytics ? `<p>The visitor statistics in section 3 (Google Analytics) are alr
 
 <h2>9. Changes</h2>
 <p>If this policy changes, the changes and their effective date will be posted on this page.</p>
-<p>First effective: ${EFFECTIVE} · Last revised: ${updated} (section 4, advertising and cookies, corrected to how the site runs today)</p>
+<p>First effective: ${EFFECTIVE} · Last revised: ${updated} (section 2, language setting: Japanese added) · Previous revision: 2026-10-13 (section 4, advertising and cookies, corrected to how the site runs today)</p>
 `,
     };
   },
