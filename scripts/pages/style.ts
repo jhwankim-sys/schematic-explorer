@@ -4,6 +4,7 @@ export const PAGES_CSS = `
 @media (prefers-color-scheme:dark){:root{--bg:#101c2d;--fg:#f4f6f8;--card:#17263b;--muted:#a9b4c2;--border:#304158;--primary:#71b8fc;--accent:#203752;--code:#1c2d44;color-scheme:dark}}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--fg);font-family:"Segoe UI Variable","Segoe UI","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.85;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:anywhere}
+html[lang=ja] body{font-family:"Segoe UI Variable","Segoe UI","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,"Noto Sans JP",system-ui,sans-serif;word-break:normal;line-break:strict}
 a{color:var(--primary)}
 .wrap{max-width:820px;margin:0 auto;padding:0 20px}
 .skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
@@ -59,6 +60,15 @@ figcaption{font-size:13px;color:var(--muted);margin-top:6px}
 .bottom{border-top:1px solid var(--border);background:var(--card);font-size:13px;color:var(--muted)}
 .bottom .wrap{max-width:1100px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding-top:20px;padding-bottom:20px}
 .bottom nav{display:flex;gap:16px;margin-left:auto;flex-wrap:wrap}.bottom a{color:var(--muted)}
+/* mid widths: the two other-language links move into the menu so the header stays one row */
+@media (min-width:641px) and (max-width:900px){
+  .top .lang{display:none}
+  .menu{display:block}
+}
+@media (min-width:641px) and (max-width:720px){
+  .nav-wide{display:none}
+  .open{margin-left:auto}
+}
 @media (max-width:640px){
   .top .wrap{flex-wrap:nowrap;gap:10px;min-height:56px;padding-top:6px;padding-bottom:6px}
   .nav-wide,.top .lang{display:none}

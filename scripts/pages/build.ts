@@ -1,14 +1,16 @@
 // 정적 콘텐츠 페이지 생성기
 // 사용법: node scripts/pages/build.ts [출력 폴더=dist]   (npm run build 가 vite build 뒤에 자동 실행)
 //
-// - scripts/pages/content/*.ts 의 글을 한국어(/guide/)·영어(/en/guide/) HTML 페이지로 만듭니다.
+// - scripts/pages/content/*.ts 의 글을 한국어(/guide/)·영어(/en/guide/) HTML 페이지로,
+//   scripts/pages/content/ja/*.ts 의 글을 일본어(/ja/guide/) HTML 페이지로 만듭니다.
 // - sitemap.xml, robots.txt 를 만들고, site.config.json 의 GA4 ID·사이트 소유 확인 코드를
 //   모든 페이지와 도구 화면(index.html)에 넣습니다. 값이 비어 있으면 아무것도 넣지 않습니다.
 // - 페이지는 자바스크립트 없이도 읽히는 순수 HTML 입니다 (검색 엔진·광고 심사용).
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { pages, type Ctx, type Lang, type PageDef } from "./content/index.ts";
+import { pages, type Ctx, type Lang, type PageContent, type PageDef } from "./content/index.ts";
+import { jaPages } from "./content/ja/index.ts";
 import { PAGES_CSS } from "./style.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -27,9 +29,18 @@ const GA_ID = /^G-[A-Z0-9]+$/.test(config.ga4MeasurementId) ? config.ga4Measurem
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(config.contactEmail) ? config.contactEmail : "";
 /** "last updated" for pages that do not set their own date (when the pages were first written) */
 const UPDATED = "2026-10-09";
-const updatedOf = (page: PageDef) => page.updated ?? UPDATED;
+/** the Japanese pages keep their own date (when the Japanese text was written or last changed), not the ko/en one */
+const updatedOf = (page: PageDef, lang: Lang = "ko") => (lang === "ja" ? jaOf(page).updated : page.updated ?? UPDATED);
+const LANGS = ["ko", "en", "ja"] as const;
+/** the Japanese text of a page; every page must have one */
+function jaOf(page: PageDef) {
+  const ja = jaPages[page.slug];
+  if (!ja) throw new Error(`no Japanese text for ${page.slug} (scripts/pages/content/ja/)`);
+  return ja;
+}
+const contentOf = (page: PageDef, ctx: Ctx): PageContent => (ctx.lang === "ja" ? jaOf(page).content(ctx) : page.content(ctx));
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const pathOf = (lang: Lang, slug: string) => (lang === "en" ? `/en/${slug}/` : `/${slug}/`);
+const pathOf = (lang: Lang, slug: string) => (lang === "ko" ? `/${slug}/` : `/${lang}/${slug}/`);
 
 const UI = {
   ko: {
@@ -37,7 +48,7 @@ const UI = {
     nav: [["guide", "사용법"], ["faq", "FAQ"], ["about", "소개"], ["contact", "문의"]] as const,
     open: "도구 열기",
     menu: "메뉴",
-    other: "English",
+    site: "사이트 메뉴",
     footer: [["about", "소개"], ["contact", "문의"], ["privacy", "개인정보처리방침"], ["terms", "이용약관"], ["changelog", "업데이트 기록"]] as const,
     home: "홈",
     updated: "최종 수정",
@@ -51,7 +62,7 @@ const UI = {
     nav: [["guide", "Guide"], ["faq", "FAQ"], ["about", "About"], ["contact", "Contact"]] as const,
     open: "Open the tool",
     menu: "Menu",
-    other: "한국어",
+    site: "Site",
     footer: [["about", "About"], ["contact", "Contact"], ["privacy", "Privacy policy"], ["terms", "Terms of use"], ["changelog", "Changelog"]] as const,
     home: "Home",
     updated: "Last updated",
@@ -60,7 +71,23 @@ const UI = {
     ctaNote: "Your file is never uploaded — it is processed only in your browser.",
     example: "Try the example",
   },
+  ja: {
+    skip: "本文へスキップ",
+    nav: [["guide", "使い方"], ["faq", "FAQ"], ["about", "概要"], ["contact", "お問い合わせ"]] as const,
+    open: "ツールを開く",
+    menu: "メニュー",
+    site: "サイトメニュー",
+    footer: [["about", "概要"], ["contact", "お問い合わせ"], ["privacy", "プライバシーポリシー"], ["terms", "利用規約"], ["changelog", "更新履歴"]] as const,
+    home: "ホーム",
+    updated: "最終更新",
+    more: "関連する記事",
+    cta: "回路図PDFを開く",
+    ctaNote: "ファイルはサーバーに送信されず、ブラウザの中だけで処理されます。",
+    example: "例題で試す",
+  },
 };
+/** each language's own name, for the links to the other languages */
+const SELF: Record<Lang, string> = { ko: "한국어", en: "English", ja: "日本語" };
 
 function gaSnippet(): string {
   if (!GA_ID) return "";
@@ -77,22 +104,23 @@ function verificationMeta(): string {
 
 function render(page: PageDef, lang: Lang): string {
   const ui = UI[lang];
-  const other: Lang = lang === "ko" ? "en" : "ko";
+  const others = LANGS.filter((l) => l !== lang);
+  const otherLinks = others.map((l) => `<a class="lang" href="${pathOf(l, page.slug)}" hreflang="${l}" lang="${l}">${SELF[l]}</a>`).join("\n");
   const ctx: Ctx = {
     lang,
     href: (slug) => pathOf(lang, slug),
-    tool: (hash = "#viewer") => `/${lang === "en" ? "?lang=en" : "?lang=ko"}${hash}`,
+    tool: (hash = "#viewer") => `/?lang=${lang}${hash}`,
     email: EMAIL,
     analytics: !!GA_ID,
-    updated: updatedOf(page),
+    updated: updatedOf(page, lang),
   };
-  const c = page.content(ctx);
+  const c = contentOf(page, ctx);
   const url = SITE + pathOf(lang, page.slug);
   const related = (page.related ?? [])
     .map((slug) => pages.find((p) => p.slug === slug))
     .filter((p): p is PageDef => !!p)
     .map((p) => {
-      const rc = p.content({ ...ctx });
+      const rc = contentOf(p, { ...ctx, updated: updatedOf(p, lang) });
       return `<li><a href="${pathOf(lang, p.slug)}"><strong>${esc(rc.title)}</strong><span>${esc(rc.description)}</span></a></li>`;
     })
     .join("");
@@ -104,9 +132,7 @@ function render(page: PageDef, lang: Lang): string {
 <title>${esc(c.title)} | Schematic Viewer</title>
 <meta name="description" content="${esc(c.description)}">
 <link rel="canonical" href="${url}">
-<link rel="alternate" hreflang="ko" href="${SITE}${pathOf("ko", page.slug)}">
-<link rel="alternate" hreflang="en" href="${SITE}${pathOf("en", page.slug)}">
-<link rel="alternate" hreflang="x-default" href="${SITE}${pathOf("ko", page.slug)}">
+${LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE}${pathOf(l, page.slug)}">\n`).join("")}<link rel="alternate" hreflang="x-default" href="${SITE}${pathOf("ko", page.slug)}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Schematic Viewer">
 <meta property="og:title" content="${esc(c.title)}">
@@ -119,20 +145,20 @@ ${verificationMeta()}${gaSnippet()}
 <body>
 <a class="skip" href="#content">${ui.skip}</a>
 <header class="top"><div class="wrap">
-<a class="brand" href="${lang === "en" ? "/?lang=en" : "/?lang=ko"}" aria-label="Schematic Viewer"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M11 9h4a2 2 0 0 0 2-2V3M19 9h2M11 15h4a2 2 0 0 1 2 2v4M19 15h2M3 9h2M3 15h2M7 9a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2"/></svg><span>Schematic <b>Viewer</b></span></a>
-<nav class="nav-wide" aria-label="${lang === "en" ? "Site" : "사이트 메뉴"}">${ui.nav.map(([slug, label]) => `<a href="${pathOf(lang, slug)}"${slug === page.slug ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
-<a class="lang" href="${pathOf(other, page.slug)}" hreflang="${other}" lang="${other}">${ui.other}</a>
+<a class="brand" href="/?lang=${lang}" aria-label="Schematic Viewer"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M11 9h4a2 2 0 0 0 2-2V3M19 9h2M11 15h4a2 2 0 0 1 2 2v4M19 15h2M3 9h2M3 15h2M7 9a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2"/></svg><span>Schematic <b>Viewer</b></span></a>
+<nav class="nav-wide" aria-label="${ui.site}">${ui.nav.map(([slug, label]) => `<a href="${pathOf(lang, slug)}"${slug === page.slug ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
+${otherLinks}
 <a class="open" href="${ctx.tool()}">${ui.open}</a>
 <details class="menu"><summary aria-label="${ui.menu}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
-<nav aria-label="${ui.menu}">${ui.nav.map(([slug, label]) => `<a href="${pathOf(lang, slug)}"${slug === page.slug ? ' aria-current="page"' : ""}>${label}</a>`).join("")}<a href="${pathOf(other, page.slug)}" hreflang="${other}" lang="${other}">${ui.other}</a></nav>
+<nav aria-label="${ui.menu}">${ui.nav.map(([slug, label]) => `<a href="${pathOf(lang, slug)}"${slug === page.slug ? ' aria-current="page"' : ""}>${label}</a>`).join("")}${others.map((l) => `<a href="${pathOf(l, page.slug)}" hreflang="${l}" lang="${l}">${SELF[l]}</a>`).join("")}</nav>
 </details>
 </div></header>
 <main id="content" class="wrap">
-<nav class="crumbs" aria-label="breadcrumb"><a href="${lang === "en" ? "/?lang=en" : "/?lang=ko"}">${ui.home}</a> / <span>${esc(c.title)}</span></nav>
+<nav class="crumbs" aria-label="breadcrumb"><a href="/?lang=${lang}">${ui.home}</a> / <span>${esc(c.title)}</span></nav>
 <article>
 <h1>${esc(c.title)}</h1>
 <p class="lead">${c.lead ?? esc(c.description)}</p>
-<p class="meta">${ui.updated}: ${updatedOf(page)}</p>
+<p class="meta">${ui.updated}: ${updatedOf(page, lang)}</p>
 ${c.body}
 </article>
 ${page.cta === false ? "" : `<aside class="cta"><div><strong>${ui.cta}</strong><p>${ui.ctaNote}</p></div><div class="cta-actions"><a class="button" href="${ctx.tool()}">${ui.open}</a><a class="button ghost" href="${ctx.tool("#example")}">${ui.example}</a></div></aside>`}
@@ -154,10 +180,9 @@ if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 write("pages.css", PAGES_CSS);
 const urls: { loc: string; lastmod?: string; alt?: Record<Lang, string> }[] = [{ loc: SITE + "/" }];
 for (const page of pages) {
-  for (const lang of ["ko", "en"] as const) write(path.join(pathOf(lang, page.slug), "index.html"), render(page, lang));
-  const alt = { ko: SITE + pathOf("ko", page.slug), en: SITE + pathOf("en", page.slug) };
-  urls.push({ loc: SITE + pathOf("ko", page.slug), lastmod: updatedOf(page), alt });
-  urls.push({ loc: SITE + pathOf("en", page.slug), lastmod: updatedOf(page), alt });
+  for (const lang of LANGS) write(path.join(pathOf(lang, page.slug), "index.html"), render(page, lang));
+  const alt = { ko: SITE + pathOf("ko", page.slug), en: SITE + pathOf("en", page.slug), ja: SITE + pathOf("ja", page.slug) };
+  for (const lang of LANGS) urls.push({ loc: SITE + pathOf(lang, page.slug), lastmod: updatedOf(page, lang), alt });
 }
 
 write(
@@ -166,7 +191,7 @@ write(
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls
   .map(
-    (u) => `  <url><loc>${u.loc}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ""}${u.alt ? (["ko", "en"] as const).map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${u.alt![l]}"/>`).join("") : ""}</url>`,
+    (u) => `  <url><loc>${u.loc}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ""}${u.alt ? LANGS.map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${u.alt![l]}"/>`).join("") : ""}</url>`,
   )
   .join("\n")}
 </urlset>
@@ -182,4 +207,4 @@ if (fs.existsSync(indexFile)) {
   if (!html.includes('rel="canonical"')) html = html.replace("</head>", extra + "</head>");
   fs.writeFileSync(indexFile, html);
 }
-console.log(`pages: ${pages.length * 2} written to ${path.relative(ROOT, OUT) || "."} (GA4 ${GA_ID ? "on" : "off"}, contact email ${EMAIL ? "set" : "not set"})`);
+console.log(`pages: ${pages.length * LANGS.length} written to ${path.relative(ROOT, OUT) || "."} (GA4 ${GA_ID ? "on" : "off"}, contact email ${EMAIL ? "set" : "not set"})`);
