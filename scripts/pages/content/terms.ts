@@ -4,6 +4,7 @@ const EFFECTIVE = "2026-10-09";
 
 export const terms: PageDef = {
   slug: "terms",
+  updated: "2026-10-21",
   cta: false,
   related: ["privacy", "faq", "contact"],
   content: ({ lang, href, analytics }) =>
@@ -49,7 +50,7 @@ export const terms: PageDef = {
 <h3>제5조 (지식재산권)</h3>
 <ol>
 <li>이용자가 여는 파일과 그 내용에 대한 권리는 이용자 또는 원래의 권리자에게 있으며, 사이트는 어떠한 권리도 갖지 않습니다.</li>
-<li>사이트의 글, 디자인과 소스 코드에 대한 권리는 운영자에게 있습니다. 사이트에 쓰인 오픈소스 소프트웨어와 예제 파일은 각자의 라이선스를 따릅니다.</li>
+<li>사이트의 글, 디자인과 소스 코드에 대한 권리는 운영자에게 있습니다. 사이트에 쓰인 오픈소스 소프트웨어와 예제 파일은 각자의 라이선스를 따릅니다(<a href="/third-party-licenses.txt">오픈소스 라이선스 고지</a>).</li>
 </ol>
 <h3>제6조 (책임의 제한)</h3>
 <ol>
@@ -105,7 +106,7 @@ export const terms: PageDef = {
 <h3>5. Intellectual property</h3>
 <ol>
 <li>Rights in the files you open and their contents remain with you or their original owners; the site claims none.</li>
-<li>Rights in the site's articles, design and source code belong to the operator. Open-source software used by the site and the example file are governed by their own licences.</li>
+<li>Rights in the site's articles, design and source code belong to the operator. Open-source software used by the site and the example file are governed by their own licences (<a href="/third-party-licenses.txt">open-source licence notices</a>).</li>
 </ol>
 <h3>6. Limitation of liability</h3>
 <ol>
