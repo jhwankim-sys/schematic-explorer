@@ -16,6 +16,7 @@ interface Entry {
 }
 
 const entries: Entry[] = [
+  { date: "2026-10-21", ko: "사용법·FAQ·소개 등 글 페이지 11개에 일본어판(/ja/)을 추가했습니다.", en: "Added Japanese versions (/ja/) of the 11 articles, including the guide, FAQ and about page.", ja: "使い方・FAQ・概要など 11 件の記事ページに日本語版（/ja/）を追加しました。" },
   { date: "2026-10-20", ko: "iPhone(Safari)에서 언어 메뉴의 항목을 눌러도 언어가 바뀌지 않던 문제를 고쳤습니다.", en: "Fixed the language menu on iPhone (Safari), where tapping a language did not change it.", ja: "iPhone（Safari）で言語メニューの項目を押しても言語が切り替わらなかった問題を修正しました。" },
   { date: "2026-10-16", ko: "도구와 첫 화면에 일본어(日本語)를 추가하고, 언어 선택을 메뉴 하나(한국어 / English / 日本語)로 바꿨습니다.", en: "Added Japanese to the tool and the home page; the language choice is now one menu (한국어 / English / 日本語).", ja: "ツールと最初の画面に日本語を追加し、言語の選択を 1 つのメニュー（한국어 / English / 日本語）にまとめました。" },
   { date: "2026-10-15", ko: "이 업데이트 기록 페이지를 추가했습니다(첫 화면과 글 페이지 아래쪽 링크).", en: "Added this changelog page (linked at the bottom of the home page and the articles).", ja: "この更新履歴ページを追加しました（最初の画面と記事ページの下部にリンク）。" },
@@ -51,7 +52,7 @@ export function list(lang: "ko" | "en" | "ja"): string {
 
 export const changelog: PageDef = {
   slug: "changelog",
-  updated: "2026-10-20",
+  updated: "2026-10-21",
   cta: false,
   related: ["guide", "faq", "about"],
   content: ({ lang }) =>
