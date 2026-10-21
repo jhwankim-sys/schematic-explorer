@@ -87,6 +87,8 @@ const UI = {
     example: "例題で試す",
   },
 };
+/** og:locale of each language's articles */
+const OG_LOCALE: Record<Lang, string> = { ko: "ko_KR", en: "en_US", ja: "ja_JP" };
 /** each language's own name, for the links to the other languages */
 const SELF: Record<Lang, string> = { ko: "한국어", en: "English", ja: "日本語" };
 
@@ -139,6 +141,7 @@ ${LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE}${pathOf(
 <meta property="og:title" content="${esc(c.title)}">
 <meta property="og:description" content="${esc(c.description)}">
 <meta property="og:url" content="${url}">
+<meta property="og:locale" content="${OG_LOCALE[lang]}">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/pages.css">
 ${verificationMeta()}${gaSnippet()}
@@ -206,7 +209,14 @@ write("third-party-licenses.txt", thirdPartyLicenses(ROOT, OUT));
 const indexFile = path.join(OUT, "index.html");
 if (fs.existsSync(indexFile)) {
   let html = fs.readFileSync(indexFile, "utf8");
-  const extra = verificationMeta() + `<link rel="canonical" href="${SITE}/">\n<link rel="sitemap" type="application/xml" href="/sitemap.xml">\n`;
+  // Open Graph for the tool page: one static set (the page switches language with ?lang=, so no og:locale);
+  // og:description is the page's own description so the two cannot drift apart
+  const desc = /<meta name="description" content="([^"]*)"/.exec(html)?.[1];
+  if (!desc) throw new Error("index.html has no description");
+  const og =
+    `<meta property="og:type" content="website">\n<meta property="og:site_name" content="Schematic Viewer">\n` +
+    `<meta property="og:title" content="Schematic Viewer">\n<meta property="og:description" content="${desc}">\n<meta property="og:url" content="${SITE}/">\n`;
+  const extra = verificationMeta() + `<link rel="canonical" href="${SITE}/">\n<link rel="sitemap" type="application/xml" href="/sitemap.xml">\n` + og;
   if (!html.includes('rel="canonical"')) html = html.replace("</head>", extra + "</head>");
   fs.writeFileSync(indexFile, html);
 }
