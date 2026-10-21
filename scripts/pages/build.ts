@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { pages, type Ctx, type Lang, type PageContent, type PageDef } from "./content/index.ts";
 import { jaPages } from "./content/ja/index.ts";
 import { PAGES_CSS } from "./style.ts";
+import { thirdPartyLicenses } from "./licenses.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const OUT = path.resolve(ROOT, process.argv[2] ?? "dist");
@@ -198,6 +199,8 @@ ${urls
 `,
 );
 write("robots.txt", `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
+// copyright and licence notices of the third-party code in the bundles (fails the build when one is missing)
+write("third-party-licenses.txt", thirdPartyLicenses(ROOT, OUT));
 
 // the tool page (built by vite): add verification tags and keep its description in sync
 const indexFile = path.join(OUT, "index.html");
