@@ -8,7 +8,8 @@ import { SchematicViewer, type PdfRenderSource, type PickInfo, type ViewerHandle
 import { decideTouch, netsNear, TOUCH } from "./components/nearby.ts";
 import { UploadHero } from "./components/upload-hero.tsx";
 import type { SchText } from "./lib/schematic/analyze.ts";
-import { loadSchematic, type Schematic } from "./lib/schematic/extract.ts";
+import type { Schematic } from "./lib/schematic/extract.ts";
+import { loadSchematicInWorker } from "./lib/schematic/load-in-worker.ts";
 import { track } from "./lib/analytics.ts";
 import {
   buildCompEntries,
@@ -195,7 +196,7 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
     setBusy("도면 읽는 중");
     const t0 = performance.now();
     try {
-      const d = await loadSchematic(file, (m) => setBusy(m));
+      const d = await loadSchematicInWorker(file, (m) => setBusy(m));
       // the scan notice belongs to the drawing on screen: it goes only when another drawing opens
       setNotice(null);
       setDoc(d);
