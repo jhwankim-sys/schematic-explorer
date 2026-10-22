@@ -3,7 +3,7 @@ import { list } from "../changelog.ts";
 
 // Japanese page of ../changelog.ts; the entries (with their ja text) live there, in one list.
 export const changelog: JaPage = {
-  updated: "2026-10-21",
+  updated: "2026-10-22",
   content: () => ({
     title: "更新履歴",
     description: "Schematic Viewer のサイトに反映された変更を、反映した日付（韓国時間）の順にまとめた記録です。",

@@ -16,6 +16,9 @@ interface Entry {
 }
 
 const entries: Entry[] = [
+  { date: "2026-10-22", ko: "PDF를 읽고 분석하는 작업을 페이지와 따로 동작하는 백그라운드 처리(Web Worker)에서 하도록 바꿨습니다. 파일이 이 브라우저 안에서만 처리되는 것은 그대로입니다.", en: "Reading and analyzing a PDF now runs in a background worker (Web Worker) separate from the page; files are still processed only in this browser.", ja: "PDF の読み込みと解析を、ページとは別に動くバックグラウンド処理（Web Worker）で行うように変えました。ファイルがこのブラウザの中だけで処理されることは変わりません。" },
+  { date: "2026-10-22", ko: "도구 화면의 설명 문구에 지원 언어로 일본어를 추가하고, 링크를 공유할 때 쓰이는 제목·설명 정보를 넣었습니다.", en: "The tool page's description now lists Japanese among the supported languages, and the page provides a title and description for link previews.", ja: "ツール画面の説明文の対応言語に日本語を加え、リンクを共有するときに使われるタイトルと説明の情報を入れました。" },
+  { date: "2026-10-22", ko: "사이트에 쓰인 오픈소스 소프트웨어의 라이선스 고지(/third-party-licenses.txt)를 공개하고, 이용약관에서 링크했습니다.", en: "Published the licence notices of the open-source software used by the site (/third-party-licenses.txt), linked from the terms of use.", ja: "サイトで使われているオープンソースソフトウェアのライセンス表示（/third-party-licenses.txt）を公開し、利用規約からリンクしました。" },
   { date: "2026-10-21", ko: "사용법·FAQ·소개 등 글 페이지 11개에 일본어판(/ja/)을 추가했습니다.", en: "Added Japanese versions (/ja/) of the 11 articles, including the guide, FAQ and about page.", ja: "使い方・FAQ・概要など 11 件の記事ページに日本語版（/ja/）を追加しました。" },
   { date: "2026-10-20", ko: "iPhone(Safari)에서 언어 메뉴의 항목을 눌러도 언어가 바뀌지 않던 문제를 고쳤습니다.", en: "Fixed the language menu on iPhone (Safari), where tapping a language did not change it.", ja: "iPhone（Safari）で言語メニューの項目を押しても言語が切り替わらなかった問題を修正しました。" },
   { date: "2026-10-16", ko: "도구와 첫 화면에 일본어(日本語)를 추가하고, 언어 선택을 메뉴 하나(한국어 / English / 日本語)로 바꿨습니다.", en: "Added Japanese to the tool and the home page; the language choice is now one menu (한국어 / English / 日本語).", ja: "ツールと最初の画面に日本語を追加し、言語の選択を 1 つのメニュー（한국어 / English / 日本語）にまとめました。" },
@@ -52,7 +55,7 @@ export function list(lang: "ko" | "en" | "ja"): string {
 
 export const changelog: PageDef = {
   slug: "changelog",
-  updated: "2026-10-21",
+  updated: "2026-10-22",
   cta: false,
   related: ["guide", "faq", "about"],
   content: ({ lang }) =>
