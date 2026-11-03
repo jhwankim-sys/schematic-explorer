@@ -260,3 +260,6 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-
 /* phones: the Japanese second heading line (11 characters, no word spaces) fits one line instead of leaving "で。" alone */
 @media (max-width: 650px) { :lang(ja) .hero-copy h1 { font-size: min(35px, 7.6vw); } }
 
+/* static landing page in index.html (scripts/pages/build.ts): hidden until the app's first render when
+   that render will show something else (another language or the tool), so it does not flash first */
+.prerender-swap #root { visibility: hidden; }
