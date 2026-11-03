@@ -2,7 +2,7 @@ import type { PageDef } from "./index.ts";
 
 export const about: PageDef = {
   slug: "about",
-  updated: "2026-10-16",
+  updated: "2026-11-03",
   related: ["guide", "faq", "contact"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -30,7 +30,29 @@ export const about: PageDef = {
 <li>배선 끝에 붙은 글자를 넷 라벨로, 부품 근처의 글자를 참조 번호와 값으로 읽어 이름을 붙입니다. Altium·OrCAD처럼 PDF 안에 연결·부품 정보를 함께 넣는 경우 그 정보로 결과를 보정합니다.</li>
 <li>결과를 도면 위에 겹쳐 그려, 누르는 곳의 노드를 강조합니다.</li>
 </ol>
-<p>이 과정은 그림에서 연결을 <em>추정</em>하는 것이므로 원본 넷리스트만큼 정확하지는 않습니다. 공개 회로도 묶음으로 매번 정확도를 채점하며 개선하고 있습니다. 한계와 해결 방법은 <a href="${href("help/formats")}">지원 형식과 오류 해결</a>에 정리했습니다.</p>
+<p>이 과정은 그림에서 연결을 <em>추정</em>하는 것이므로 원본 넷리스트만큼 정확하지는 않습니다.</p>
+
+<h2>어떻게 시험하나요</h2>
+<p>분석 규칙을 바꿀 때마다, CAD 원본이 공개된 회로도로 결과를 채점합니다. 변경 요청(PR)이 올라오면 GitHub Actions가 자동으로 같은 채점을 실행하고, 점수 변화를 확인한 뒤에 반영합니다.</p>
+<ul>
+<li><strong>채점하는 회로도 11개</strong>: Olimex의 공개 보드 10개(KiCad 5·7)와 Adafruit 보드 1개(Eagle). 각 PDF를 분석한 결과를 각 보드 저장소에 공개된 CAD 원본에서 뽑은 정답 연결과 비교합니다. 이 사이트의 예제(Olimex ESP32-PoE rev. I)도 여기에 들어 있습니다.</li>
+<li><strong>채점에 넣지 않는 샘플 3개</strong>: 글자를 선으로 그린 Eagle 도면, Altium Smart PDF, 문서용으로 다시 그린 도면은 개발자 PC에서만 확인하며 자동 채점 점수에는 들어가지 않습니다.</li>
+<li><strong>2026-11-03 기준 평균(11개)</strong>: 정답 넷을 거의 그대로(양쪽 95% 이상 일치) 찾아낸 비율 97.6%, 이름이 보이는 넷의 이름을 맞힌 비율 97.8%, 참조 번호로 부품을 찾은 비율 96.8%, 찾은 부품의 값을 맞힌 비율 95.4%. 같은 도면을 흑백으로 바꿔 채점하면 각각 87.7%, 87.2%, 91.6%, 74.4%로 낮아집니다. 컬러로 내보내기를 권하는 이유입니다.</li>
+</ul>
+<p>이 점수는 위 공개 회로도에 대한 결과일 뿐, 모든 회로도에서 같은 정확도를 보장하지 않습니다. 회사마다 도면 그리는 방식이 달라 처음 보는 형식에서는 더 낮을 수 있습니다.</p>
+
+<h2>알려진 한계</h2>
+<ul>
+<li>스캔·사진·캡처로 만든 PDF는 분석할 수 없습니다(도면 보기만 가능).</li>
+<li>글자를 선으로 그린 PDF는 노드 이름과 이름 검색이 제한됩니다.</li>
+<li>흑백 PDF는 부품 선이 배선으로 잡혀 서로 다른 노드가 합쳐질 수 있습니다.</li>
+<li>이름 없이 페이지를 넘어가는 연결(계층 시트 포트 등)은 따라가지 못합니다.</li>
+<li>부품(저항, 스위치, 페라이트 비드 등)을 거친 연결은 같은 노드로 묶지 않습니다.</li>
+</ul>
+<p>증상별 확인 방법은 <a href="${href("help/formats")}">지원 형식과 오류 해결</a>에, 실제 화면으로 결과를 확인하는 과정은 <a href="${href("learn/example")}">예제로 따라 하기</a>에 정리했습니다.</p>
+
+<h2>소스 코드와 문의</h2>
+<p>사이트와 분석 코드, 채점 도구의 소스는 <a href="https://github.com/jhwankim-sys/schematic-explorer">GitHub 저장소</a>에서 볼 수 있고, 사이트에 반영된 변경은 <a href="${href("changelog")}">업데이트 기록</a>에 정리합니다. 잘못 분석되는 공개 회로도나 오류는 <a href="${href("contact")}">문의</a>로 알려 주세요.</p>
 
 <h2>누가 만들었나요</h2>
 <p>전자 회로를 다루는 개인 개발자가 운영합니다. 사이트는 GitHub Pages에서 정적 파일로 제공됩니다. 서버에서 실행되는 프로그램이나 데이터베이스는 없습니다.</p>
@@ -64,7 +86,29 @@ export const about: PageDef = {
 <li>Text at wire ends is read as net labels, and text near parts as references and values. When the PDF also carries connection or part data — as Altium and OrCAD exports can — that data is used to correct the result.</li>
 <li>The result is drawn over the sheet, and the net under your click is highlighted.</li>
 </ol>
-<p>Because connections are <em>inferred</em> from a drawing, the result is not as exact as the original netlist. Accuracy is scored against a set of public schematics with every change. Limits and fixes are listed in <a href="${href("help/formats")}">Supported files and troubleshooting</a>.</p>
+<p>Because connections are <em>inferred</em> from a drawing, the result is not as exact as the original netlist.</p>
+
+<h2>How it is tested</h2>
+<p>Every change to the analysis rules is scored on schematics whose CAD source is public. When a change is proposed (a pull request), GitHub Actions runs the same scoring automatically, and the change in scores is checked before the change is merged.</p>
+<ul>
+<li><strong>11 scored schematics</strong>: ten open boards from Olimex (KiCad 5 and 7) and one Adafruit board (Eagle). The analysis of each PDF is compared with the true connections extracted from the CAD source published in each board's repository. This site's example (Olimex ESP32-PoE rev. I) is one of them.</li>
+<li><strong>3 samples not in the score</strong>: an Eagle drawing with its lettering drawn as lines, an Altium Smart PDF and a drawing redrawn for documentation are only checked on the developer's PC and are not part of the automatic score.</li>
+<li><strong>Averages over the 11, as of 2026-11-03</strong>: true nets recovered almost exactly (at least 95% match both ways) 97.6%; visibly named nets given the right name 97.8%; parts found by reference 96.8%; values right for the parts found 95.4%. Scored as black-and-white copies of the same drawings, these drop to 87.7%, 87.2%, 91.6% and 74.4% — which is why colour exports are recommended.</li>
+</ul>
+<p>These scores describe the public schematics above; they do not promise the same accuracy on every drawing. Drawing styles differ between companies, and an unfamiliar style can score lower.</p>
+
+<h2>Known limitations</h2>
+<ul>
+<li>Scanned, photographed or captured PDFs cannot be analyzed (the drawing can only be viewed).</li>
+<li>PDFs with lettering drawn as lines limit net names and name search.</li>
+<li>In black-and-white PDFs, symbol lines can be taken for wires and different nets can merge.</li>
+<li>Connections that leave a page without a name (hierarchical sheet ports and the like) are not followed.</li>
+<li>Connections through a part (resistor, switch, ferrite bead …) are not merged into one net.</li>
+</ul>
+<p>How to check each symptom is in <a href="${href("help/formats")}">Supported files and troubleshooting</a>, and a worked check with real screenshots is in the <a href="${href("learn/example")}">step-by-step example</a>.</p>
+
+<h2>Source code and contact</h2>
+<p>The source of the site, the analysis and the scoring tools is on <a href="https://github.com/jhwankim-sys/schematic-explorer">GitHub</a>, and changes that reach the site are listed in the <a href="${href("changelog")}">changelog</a>. Please report public schematics that analyze wrongly, or any errors, through the <a href="${href("contact")}">contact page</a>.</p>
 
 <h2>Who runs it</h2>
 <p>An individual developer who works with electronics. The site is served as static files from GitHub Pages — there is no server-side program or database.</p>
