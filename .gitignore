@@ -14,3 +14,4 @@ samples/
 corpus/cache/
 corpus/files/
 corpus/out/
+dist-ssr/
