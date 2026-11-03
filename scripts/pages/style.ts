@@ -44,6 +44,7 @@ article th{background:var(--accent)}
 .note p:last-child{margin:0}
 dl.qa dt{font-weight:650;margin-top:22px}dl.qa dd{margin:6px 0 0}
 figure{margin:18px 0}figure svg{width:100%;height:auto;background:var(--card);border:1px solid var(--border);border-radius:8px}
+figure img{display:block;width:100%;height:auto;background:var(--card);border:1px solid var(--border);border-radius:8px}
 figcaption{font-size:13px;color:var(--muted);margin-top:6px}
 .steps{counter-reset:s;list-style:none;margin-left:0}
 .steps>li{counter-increment:s;position:relative;padding-left:40px;margin:16px 0}
