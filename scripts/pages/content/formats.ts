@@ -1,7 +1,13 @@
 import type { PageDef } from "./index.ts";
+import { fig } from "./example.ts";
+
+// The three samples below are small PDFs made for this page (not a real product): the same sheet as a
+// vector PDF, as an image-only PDF and with an open password. Screenshots are of the built tool; re-take them
+// when the messages or the workspace change.
 
 export const formats: PageDef = {
   slug: "help/formats",
+  updated: "2026-11-03",
   related: ["guide", "faq", "learn/read-schematic"],
   content: ({ lang, href }) =>
     lang === "ko"
@@ -28,6 +34,28 @@ export const formats: PageDef = {
 <li>가능하면 <strong>컬러</strong>로 내보낼 것 (배선 색이 부품 선과 다르면 정확도가 올라갑니다)</li>
 <li>암호가 걸려 있지 않을 것</li>
 </ul>
+
+<h2>같은 도면, 세 가지 PDF로 확인한 결과</h2>
+<p>차이를 직접 보여 드리려고, 이 글을 위해 만든 작은 회로도(실제 제품이 아닌 예시) 한 장을 세 가지 방식으로 저장해 이 사이트의 도구로 열어 봤습니다. 2026-11-03에 확인한 결과입니다.</p>
+<table>
+<thead><tr><th>저장 방식</th><th>도구에 나온 결과</th><th>뜻</th></tr></thead>
+<tbody>
+<tr><td>회로도 프로그램처럼 선과 글자를 그대로 담은 PDF (벡터)</td><td>노드 4, 부품 4. VCC·GND·SENSE_EN·LED_OUT이 목록에 나오고, SENSE_EN을 누르면 해당 배선이 강조됨</td><td>분석 가능</td></tr>
+<tr><td>같은 도면을 그림(150dpi)으로 바꿔 만든 PDF</td><td>도면은 보이지만 노드 0, 부품 0. "선과 글자 정보가 없어 연결을 분석할 수 없습니다" 안내</td><td>스캔·캡처 PDF와 같은 상태. 원본에서 다시 내보내야 함</td></tr>
+<tr><td>벡터 PDF에 열기 암호를 건 사본</td><td>"암호가 걸린 PDF는 열 수 없습니다" 안내, 도면도 열리지 않음</td><td>암호를 해제한 사본이 필요</td></tr>
+</tbody>
+</table>
+${fig("formats-vector", "ko", "벡터 PDF를 연 화면. 목록에 GND, VCC, LED_OUT, SENSE_EN이 있고 SENSE_EN 배선이 청록색으로 강조되어 있다.", "벡터 PDF: 이름이 목록에 나오고, 선택한 노드(SENSE_EN)의 배선이 강조됩니다.")}
+${fig("formats-image", "ko", "그림으로 바꾼 PDF를 연 화면. 도면은 보이지만 노드 0, 부품 0이고, 아래에 선과 글자 정보가 없어 연결을 분석할 수 없다는 안내가 나와 있다.", "그림만 담긴 PDF: 도면은 그대로 보이지만 노드·부품이 0이고 분석할 수 없다는 안내가 나옵니다.")}
+${fig("formats-password", "ko", "암호가 걸린 PDF를 열려고 한 화면. 암호가 걸린 PDF는 열 수 없다는 안내가 나와 있다.", "열기 암호가 걸린 PDF: 파일을 열지 않고 안내만 표시합니다.")}
+<h3>결과를 믿어도 되는지 확인하는 방법</h3>
+<ol class="steps">
+<li><strong>글자가 텍스트인지</strong>: PDF 뷰어에서 부품 번호를 드래그해 선택되면 텍스트입니다. 선택되지 않으면 이름 검색과 노드 이름이 제한됩니다.</li>
+<li><strong>아는 노드 하나로 확인</strong>: GND나 전원처럼 위치를 알고 있는 노드를 눌러, 강조된 범위가 원본에서 기대한 곳과 같은지 봅니다.</li>
+<li><strong>라벨 수 비교</strong>: 같은 이름을 검색했을 때 나오는 위치 수와, 노드의 라벨 위치 수(×11 같은 표시)가 같은지 봅니다. 다르면 일부 라벨이 배선에 붙어 있지 않다고 판단되었을 수 있으니, 검색으로 그 위치를 찾아 직접 확인합니다.</li>
+<li><strong>부품을 거친 연결</strong>: 도구는 저항·스위치·페라이트 비드 등 부품을 거친 연결을 같은 노드로 묶지 않습니다. 그런 관계는 부품을 눌러 도면에서 직접 확인합니다.</li>
+</ol>
+<p>실제 사용 예는 <a href="${href("learn/example")}">예제로 따라 하기</a>에서 단계별 화면과 함께 볼 수 있습니다.</p>
 
 <h2>화면에 나오는 안내별 해결 방법</h2>
 <h3>"PDF 파일만 열 수 있습니다"</h3>
@@ -78,6 +106,28 @@ export const formats: PageDef = {
 <li>is in <strong>colour</strong> where possible (wires in a different colour from symbols improve accuracy);</li>
 <li>has no password.</li>
 </ul>
+
+<h2>One sheet, three kinds of PDF</h2>
+<p>To show the difference, we saved one small schematic made for this page (an illustration, not a real product) in three ways and opened each in this site's tool. Results as checked on 2026-11-03:</p>
+<table>
+<thead><tr><th>How the PDF was saved</th><th>What the tool showed</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Lines and text kept, as a schematic program exports it (vector)</td><td>Nets 4, Parts 4. VCC, GND, SENSE_EN and LED_OUT are listed; picking SENSE_EN highlights its wires</td><td>Can be analyzed</td></tr>
+<tr><td>The same sheet turned into a picture (150 dpi) inside a PDF</td><td>The drawing shows, but Nets 0 and Parts 0, with the message "This PDF has no line or text data, so its connections can't be analyzed"</td><td>Same as a scanned or captured PDF; export again from the original</td></tr>
+<tr><td>A copy of the vector PDF with an open password</td><td>"Password-protected PDFs can't be opened"; the drawing does not open</td><td>A copy without the password is needed</td></tr>
+</tbody>
+</table>
+${fig("formats-vector", "en", "The vector PDF opened: GND, VCC, LED_OUT and SENSE_EN are listed and the SENSE_EN wires are highlighted in cyan.", "Vector PDF: names appear in the list and the wires of the selected net (SENSE_EN) are highlighted.")}
+${fig("formats-image", "en", "The picture-only PDF opened: the drawing is visible but Nets 0 and Parts 0, and a message says the PDF has no line or text data so its connections cannot be analyzed.", "Picture-only PDF: the drawing is still shown, but there are no nets or parts and a message says it cannot be analyzed.")}
+${fig("formats-password", "en", "Trying to open the password-protected PDF: a message says password-protected PDFs can't be opened.", "PDF with an open password: the file is not opened and only the message is shown.")}
+<h3>How to tell whether a result can be trusted</h3>
+<ol class="steps">
+<li><strong>Is the lettering text?</strong> If you can drag-select a part reference in a PDF reader, it is text. If not, name search and net names are limited.</li>
+<li><strong>Check one net you know</strong>: pick GND or a supply whose location you know and see whether the highlighted area matches what the original shows.</li>
+<li><strong>Compare label counts</strong>: the number of places a name search finds should match the net's label count (the ×11 next to it). If they differ, some labels may have been judged not to touch a wire; find those places with the search and check them yourself.</li>
+<li><strong>Connections through parts</strong>: the tool does not merge connections through a resistor, switch, ferrite bead or other part into one net. Check such relations by selecting the part and reading the drawing.</li>
+</ol>
+<p>For a worked example with screenshots of each step, see the <a href="${href("learn/example")}">step-by-step example</a>.</p>
 
 <h2>What each message means</h2>
 <h3>"Only PDF files can be opened"</h3>

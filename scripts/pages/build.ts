@@ -8,7 +8,7 @@
 // - 페이지는 자바스크립트 없이도 읽히는 순수 HTML 입니다 (검색 엔진·광고 심사용).
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { pages, type Ctx, type Lang, type PageContent, type PageDef } from "./content/index.ts";
 import { jaPages } from "./content/ja/index.ts";
 import { PAGES_CSS } from "./style.ts";
@@ -218,6 +218,23 @@ if (fs.existsSync(indexFile)) {
     `<meta property="og:title" content="Schematic Viewer">\n<meta property="og:description" content="${desc}">\n<meta property="og:url" content="${SITE}/">\n`;
   const extra = verificationMeta() + `<link rel="canonical" href="${SITE}/">\n<link rel="sitemap" type="application/xml" href="/sitemap.xml">\n` + og;
   if (!html.includes('rel="canonical"')) html = html.replace("</head>", extra + "</head>");
+  // the Korean landing page as static HTML inside #root, so the page can be read and its links followed
+  // before (or without) JavaScript; the app replaces it on its first render. It comes from the same React
+  // component (src/prerender.tsx, built by "vite build --ssr" into dist-ssr/ before this step).
+  if (html.includes('<div id="root"></div>')) {
+    const ssr = path.join(ROOT, "dist-ssr", "prerender.js");
+    if (!fs.existsSync(ssr)) throw new Error("dist-ssr/prerender.js is missing: run npm run build (it builds the prerender first)");
+    const { renderHome } = (await import(pathToFileURL(ssr).href)) as { renderHome: () => string };
+    const home = renderHome();
+    if (!home.includes('id="home"')) throw new Error("prerender: the landing page did not render");
+    html = html.replace('<div id="root"></div>', `<div id="root">${home}</div>`);
+    // When the first render will not be this Korean landing page (another language chosen by ?lang=, saved,
+    // or from the browser; or a link straight into the tool), hide #root until the app has rendered, so the
+    // Korean text does not flash first. Same choice as in src/site.tsx. Without JavaScript nothing is hidden;
+    // if the app never starts, the page is shown again after a few seconds.
+    const swap = `<script>(function(){try{var d=document.documentElement,k=function(v){return v==="ko"||v==="en"||v==="ja"},q=new URLSearchParams(location.search).get("lang"),s=null;try{s=localStorage.getItem("schematic-viewer-language")}catch(e){}var b=(navigator.language||"").toLowerCase(),l=k(q)?q:k(s)?s:b.indexOf("ko")===0?"ko":b.indexOf("ja")===0?"ja":"en";if(l!=="ko"||/^#(viewer|drawing|example|privacy)$/.test(location.hash)){d.classList.add("prerender-swap");setTimeout(function(){d.classList.remove("prerender-swap")},8000)}}catch(e){}})();</script>\n`;
+    html = html.replace("</head>", swap + "</head>");
+  }
   fs.writeFileSync(indexFile, html);
 }
 console.log(`pages: ${pages.length * LANGS.length} written to ${path.relative(ROOT, OUT) || "."} (GA4 ${GA_ID ? "on" : "off"}, contact email ${EMAIL ? "set" : "not set"})`);

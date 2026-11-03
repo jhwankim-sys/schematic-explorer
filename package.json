@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json && vite build && node scripts/pages/build.ts",
+    "build": "tsc -p tsconfig.json && vite build && vite build --ssr src/prerender.tsx --outDir dist-ssr --emptyOutDir && node scripts/pages/build.ts",
     "pages": "node scripts/pages/build.ts",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
