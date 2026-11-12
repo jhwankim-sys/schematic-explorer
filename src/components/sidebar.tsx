@@ -18,8 +18,13 @@ interface Props {
   nets: NetEntry[];
   comps: CompEntry[];
   unnamedCount: number;
-  /** the PDF has no text layer (lettering drawn as strokes): names cannot be read */
-  noText?: boolean;
+  /** what the whole document lacks (from the analysis result): "empty" = no lines and no text on any page
+   *  (scan / image-only), "noText" = lines but no text layer anywhere, so no names; null = names exist */
+  docData?: "empty" | "noText" | null;
+  /** the same for the page on screen when it differs from the rest of a multi-page document (1-based number) */
+  pageData?: { kind: "empty" | "noText"; page: number } | null;
+  /** the page on screen has line data: "click a wire" is only said where there are wires */
+  pageWires?: boolean;
   selectedNet: string | null;
   selectedComp: string | null;
   onPickNet: (e: NetEntry) => void;
@@ -71,7 +76,9 @@ export function SchematicSidebar({
   nets,
   comps,
   unnamedCount,
-  noText,
+  docData = null,
+  pageData = null,
+  pageWires = true,
   selectedNet,
   selectedComp,
   onPickNet,
@@ -417,18 +424,52 @@ export function SchematicSidebar({
 
       {tab === "nets" && !detailView && (
         <div ref={listRef} role="tabpanel" id="side-panel-nets" aria-labelledby="side-tab-nets" className={listCls} style={listStyle}>
-          {noText && (
+          {/* based on what the analysis found (lines / text), never a guess about how the PDF was made;
+              "click a wire" only where there are wires */}
+          {docData && (
             <p className="mx-1 mb-2 rounded-md border border-border bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              {t(
-                "이 PDF는 글자가 선으로 그려져 있어 노드 이름을 읽을 수 없습니다. 도면에서 배선을 누르면 연결은 확인할 수 있습니다.",
-                "This PDF draws its lettering as lines, so net names can't be read. Click a wire in the drawing to see its connections.",
-              )}
+              {docData === "empty"
+                ? t(
+                    "이 PDF에서 선과 글자 정보를 찾지 못해 노드 목록을 만들 수 없습니다. 도면 보기만 가능합니다.",
+                    "No line or text data was found in this PDF, so no net list can be made. The drawing can still be viewed.",
+                    "このPDFでは線と文字の情報が見つからないため、ネット一覧を作れません。図面の表示だけできます。",
+                  )
+                : t(
+                    "이 PDF에서 글자 정보(텍스트 레이어)를 찾지 못해 노드 이름을 표시할 수 없습니다. 글자가 선이나 그림으로 저장되었을 수 있습니다.",
+                    "No text data (text layer) was found in this PDF, so net names can't be shown. The lettering may be stored as lines or as a picture.",
+                    "このPDFでは文字の情報（テキストレイヤー）が見つからないため、ネット名を表示できません。文字が線や画像として保存されている可能性があります。",
+                  ) +
+                  (pageWires
+                    ? t(" ", " ", "") + t("도면에서 배선을 누르면 추정한 연결은 확인할 수 있습니다.", "Click a wire in the drawing to see its inferred connections.", "図面で配線を押すと、推定した接続は確認できます。")
+                    : "")}
             </p>
           )}
-          {fNets.length === 0 && !noText && <p className="px-2 py-6 text-sm text-muted-foreground">{t("일치하는 노드가 없습니다.")}</p>}
+          {pageData && (
+            <p className="mx-1 mb-2 rounded-md border border-border bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+              {pageData.kind === "empty" && docData
+                ? t(
+                    `${pageData.page}쪽에서는 선과 글자 정보를 찾지 못해 이 페이지의 연결은 분석하지 않았습니다.`,
+                    `No line or text data was found on page ${pageData.page}, so its connections were not analyzed.`,
+                    `${pageData.page}ページでは線と文字の情報が見つからないため、このページの接続は解析していません。`,
+                  )
+                : pageData.kind === "empty"
+                ? t(
+                    `${pageData.page}쪽에서는 선과 글자 정보를 찾지 못해 이 페이지의 연결은 분석하지 않았습니다. 목록은 다른 페이지에서 읽은 결과입니다.`,
+                    `No line or text data was found on page ${pageData.page}, so its connections were not analyzed. The list comes from the other pages.`,
+                    `${pageData.page}ページでは線と文字の情報が見つからないため、このページの接続は解析していません。一覧はほかのページから読み取った結果です。`,
+                  )
+                : t(
+                    `${pageData.page}쪽에서는 글자 정보를 찾지 못해 이 페이지의 이름은 표시되지 않습니다. 목록의 이름은 다른 페이지에서 읽은 것입니다.`,
+                    `No text data was found on page ${pageData.page}, so no names are shown for it. The names in the list come from the other pages.`,
+                    `${pageData.page}ページでは文字の情報が見つからないため、このページの名前は表示されません。一覧の名前はほかのページから読み取ったものです。`,
+                  )}
+            </p>
+          )}
+          {fNets.length === 0 && !docData && <p className="px-2 py-6 text-sm text-muted-foreground">{t("일치하는 노드가 없습니다.")}</p>}
           {power.length > 0 && <NetGroup title={t("전원")} items={power} selected={selectedNet} onPick={onPickNet} />}
           {signal.length > 0 && <NetGroup title={t("신호")} items={signal} selected={selectedNet} onPick={onPickNet} />}
-          {!q && unnamedCount > 0 && (
+          {/* not on a page without wires (an image or text-only page in a mixed PDF): there is nothing there to click */}
+          {!q && unnamedCount > 0 && pageWires && (
             <p className="px-2 pt-4 text-xs text-muted-foreground">
               {t(`라벨이 없는 노드 ${unnamedCount.toLocaleString()}개는 도면에서 배선을 클릭해 확인할 수 있습니다.`, `Click wires in the drawing to inspect ${unnamedCount.toLocaleString()} unlabeled nets.`, `ラベルのないネット${unnamedCount.toLocaleString()}個は、図面で配線をクリックすると確認できます。`)}
             </p>

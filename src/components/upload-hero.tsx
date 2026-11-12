@@ -15,7 +15,7 @@ export function UploadHero({ onFile, onExample, busy }: { onFile: (f: File) => v
       {/* what it opens, which files, and where the file goes — before the button */}
       <ul className="upload-facts">
         <li><CircuitBoard aria-hidden="true" /><span><strong>{t("어떤 도구인가요")}</strong>{t("전자회로 회로도 PDF를 열어 배선 연결(노드)과 부품을 찾아 줍니다.", "Opens electronic schematic PDFs and traces their nets and parts.")}</span></li>
-        <li><FileSearch aria-hidden="true" /><span><strong>{t("지원 형식")}</strong>{t("KiCad·OrCAD·Altium·Eagle 등에서 내보낸 벡터 PDF. 스캔·사진 PDF와 암호 걸린 PDF는 분석할 수 없습니다.", "Vector PDFs exported from KiCad, OrCAD, Altium, Eagle and similar. Scanned, photographed or password-protected PDFs cannot be analyzed.")}</span></li>
+        <li><FileSearch aria-hidden="true" /><span><strong>{t("지원 형식")}</strong>{t("KiCad·OrCAD·Altium·Eagle 등에서 내보낸 벡터 PDF. 스캔·사진 PDF는 도면 보기만 되고 연결 분석은 되지 않으며, 암호 걸린 PDF는 열 수 없습니다.", "Vector PDFs exported from KiCad, OrCAD, Altium, Eagle and similar. Scanned or photographed PDFs can be viewed but not analyzed, and password-protected PDFs can't be opened.", "KiCad・OrCAD・Altium・Eagleなどから書き出したベクターPDF。スキャン・写真のPDFは表示できますが接続は解析できず、パスワード付きのPDFは開けません。")}</span></li>
         <li><LockKeyhole aria-hidden="true" /><span><strong>{t("파일 저장")}</strong>{t("파일은 서버로 전송·저장되지 않고 이 브라우저 안에서만 처리되며, 창을 닫으면 사라집니다.", "Your file is never uploaded or stored on a server. It is processed in this browser only and is gone when you close the page.")}</span></li>
       </ul>
       <div className="upload-zone" id="upload-zone" tabIndex={-1} role="group" aria-labelledby="upload-zone-title"><FileUp size={32} aria-hidden="true" /><h2 id="upload-zone-title">{t("파일을 선택하거나 끌어다 놓으세요")}</h2>
