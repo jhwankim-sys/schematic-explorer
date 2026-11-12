@@ -1,8 +1,9 @@
 import type { JaPage } from "./index.ts";
+import { SCORE_RUN, scoreTable } from "../corpus-scores.ts";
 
 // Translation of ../about.ts.
 export const about: JaPage = {
-  updated: "2026-11-03",
+  updated: "2026-11-12",
   content: ({ href, tool }) => ({
     title: "Schematic Viewer について",
     description: "Schematic Viewer は、回路図 PDF をブラウザで開いて接続された配線を強調し、同じ名前のラベルや部品を探せる無料のツールです。作った理由と仕組み、限界を紹介します。",
@@ -37,6 +38,22 @@ export const about: JaPage = {
 <li><strong>2026-11-03 時点の平均（11 件）</strong>：正解のネットをほぼそのまま（双方向に 95% 以上一致）見つけた割合 97.6%、名前が見えるネットの名前を当てた割合 97.8%、参照番号で部品を見つけた割合 96.8%、見つけた部品の値を当てた割合 95.4%。同じ図面を白黒にして採点すると、それぞれ 87.7%、87.2%、91.6%、74.4% に下がります。カラーでの書き出しをおすすめする理由です。</li>
 </ul>
 <p>この点数は上の公開回路図での結果であり、すべての回路図で同じ精度を保証するものではありません。図面の描き方は会社ごとに違うため、初めて見る形式では低くなることがあります。</p>
+<h3>標本ごとの点数と計算方法</h3>
+<p>下の表が上の平均の根拠です。同じ結果が <a href="${SCORE_RUN.ci}">GitHub Actions の採点の実行</a>（${SCORE_RUN.date}）に残っており、同じコードでもう一度実行すると同じ表になります。標本の一覧と CAD 元データのリポジトリ・コミットは <a href="${SCORE_RUN.manifest}">corpus/manifest.json</a> にあり、表の回路図名はそのコミットにリンクしています。</p>
+<ul>
+<li><strong>ネット正確</strong>：CAD 元データのネットのうち、ツールが見つけたネットと配線の長さで双方向に 95% 以上重なるネットの割合</li>
+<li><strong>名前正確</strong>：元データでラベルや電源記号によって名前が見えるネットのうち、同じ名前を付けた割合</li>
+<li><strong>部品発見</strong>：元データに置かれた参照番号のうち、ツールの一覧にある割合</li>
+<li><strong>値正確</strong>：見つけた部品のうち、最初の値が元データの値フィールドと同じ割合。Adafruit の標本は採点ツールがこの元データの形式から値を読まないため空欄（–）で、平均からも除きました。</li>
+<li><strong>平均</strong>：標本 11 件（値正確は 10 件）の単純平均です。標本ごとにネットや部品の数が違っても同じ重みで数えます。</li>
+<li><strong>白黒</strong>：同じ PDF のすべての線を黒にして白黒印刷のようにしてから、同じ方法で採点した結果です。</li>
+</ul>
+<p><strong>カラーの PDF（%）</strong></p>
+${scoreTable("ja", "colour")}
+<p><strong>白黒にした PDF（%）</strong></p>
+${scoreTable("ja", "mono")}
+<p>採点に含めない標本 3 件（Arduino Uno R3（Eagle 6、文字を線で描いたもの）、STM32F4DISCOVERY MB997（Altium Smart PDF）、STEVAL-IDS001V5（文書用に描き直した図面））は、ファイルをリポジトリに入れず開発者の PC でのみ確認しているため、上の表と平均には含まれません。</p>
+
 
 <h2>既知の限界</h2>
 <ul>

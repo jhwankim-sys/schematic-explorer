@@ -1,8 +1,9 @@
 import type { PageDef } from "./index.ts";
+import { SCORE_RUN, scoreTable } from "./corpus-scores.ts";
 
 export const about: PageDef = {
   slug: "about",
-  updated: "2026-11-03",
+  updated: "2026-11-12",
   related: ["guide", "faq", "contact"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -40,6 +41,22 @@ export const about: PageDef = {
 <li><strong>2026-11-03 기준 평균(11개)</strong>: 정답 넷을 거의 그대로(양쪽 95% 이상 일치) 찾아낸 비율 97.6%, 이름이 보이는 넷의 이름을 맞힌 비율 97.8%, 참조 번호로 부품을 찾은 비율 96.8%, 찾은 부품의 값을 맞힌 비율 95.4%. 같은 도면을 흑백으로 바꿔 채점하면 각각 87.7%, 87.2%, 91.6%, 74.4%로 낮아집니다. 컬러로 내보내기를 권하는 이유입니다.</li>
 </ul>
 <p>이 점수는 위 공개 회로도에 대한 결과일 뿐, 모든 회로도에서 같은 정확도를 보장하지 않습니다. 회사마다 도면 그리는 방식이 달라 처음 보는 형식에서는 더 낮을 수 있습니다.</p>
+<h3>표본별 점수와 계산 방법</h3>
+<p>아래 표가 위 평균의 근거입니다. 같은 결과가 <a href="${SCORE_RUN.ci}">GitHub Actions 채점 실행</a>(${SCORE_RUN.date})에 남아 있고, 같은 코드로 다시 실행하면 같은 표가 나옵니다. 표본 목록과 CAD 원본의 저장소·커밋은 <a href="${SCORE_RUN.manifest}">corpus/manifest.json</a>에 있고, 표의 회로도 이름은 해당 커밋으로 연결됩니다.</p>
+<ul>
+<li><strong>넷 정확</strong>: CAD 원본의 넷 가운데, 도구가 찾은 넷과 배선 길이 기준으로 양쪽 95% 이상 겹치는 넷의 비율</li>
+<li><strong>이름 정확</strong>: 원본에서 라벨·전원 기호로 이름이 보이는 넷 가운데 같은 이름을 붙인 비율</li>
+<li><strong>부품 찾음</strong>: 원본에 놓인 참조 번호 가운데 도구 목록에 있는 비율</li>
+<li><strong>값 정확</strong>: 찾은 부품 가운데 첫 번째 값이 원본의 값 필드와 같은 비율. Adafruit 표본은 채점 도구가 이 원본 형식에서 값을 읽지 않아 빈칸(–)이며 평균에서도 뺐습니다.</li>
+<li><strong>평균</strong>: 표본 11개(값 정확은 10개)의 단순 평균입니다. 표본마다 넷·부품 수가 달라도 같은 비중으로 셉니다.</li>
+<li><strong>흑백</strong>: 같은 PDF의 모든 선을 검은색으로 바꿔 흑백 인쇄본처럼 만든 뒤 같은 방법으로 채점한 결과입니다.</li>
+</ul>
+<p><strong>컬러 PDF (%)</strong></p>
+${scoreTable("ko", "colour")}
+<p><strong>흑백으로 바꾼 PDF (%)</strong></p>
+${scoreTable("ko", "mono")}
+<p>채점에 넣지 않은 표본 3개(Arduino Uno R3(Eagle 6, 글자를 선으로 그림), STM32F4DISCOVERY MB997(Altium Smart PDF), STEVAL-IDS001V5(문서용으로 다시 그린 도면))는 파일을 저장소에 넣지 않고 개발자 PC에서만 확인하므로 위 표와 평균에 들어 있지 않습니다.</p>
+
 
 <h2>알려진 한계</h2>
 <ul>
@@ -96,6 +113,22 @@ export const about: PageDef = {
 <li><strong>Averages over the 11, as of 2026-11-03</strong>: true nets recovered almost exactly (at least 95% match both ways) 97.6%; visibly named nets given the right name 97.8%; parts found by reference 96.8%; values right for the parts found 95.4%. Scored as black-and-white copies of the same drawings, these drop to 87.7%, 87.2%, 91.6% and 74.4% — which is why colour exports are recommended.</li>
 </ul>
 <p>These scores describe the public schematics above; they do not promise the same accuracy on every drawing. Drawing styles differ between companies, and an unfamiliar style can score lower.</p>
+<h3>Scores per sample and how they are calculated</h3>
+<p>The tables below are the basis of the averages above. The same results are kept in the <a href="${SCORE_RUN.ci}">GitHub Actions scoring run</a> (${SCORE_RUN.date}), and running the same code again gives the same tables. The sample list with each CAD source's repository and commit is in <a href="${SCORE_RUN.manifest}">corpus/manifest.json</a>; each schematic name links to that commit.</p>
+<ul>
+<li><strong>Nets exact</strong>: the share of the CAD source's nets matched by a net the tool found, at least 95% both ways by wire length</li>
+<li><strong>Names right</strong>: the share of nets visibly named by a label or power symbol in the source that got the same name</li>
+<li><strong>Parts found</strong>: the share of references placed in the source that appear in the tool's list</li>
+<li><strong>Values right</strong>: the share of found parts whose first value equals the source's value field. The Adafruit sample is blank (–) because the scorer does not read values from that source format, and it is left out of the average.</li>
+<li><strong>Average</strong>: a plain mean over the 11 samples (10 for values), each sample counting equally whatever its number of nets or parts.</li>
+<li><strong>Black and white</strong>: the same PDFs with every line turned black, like a black-and-white print, scored the same way.</li>
+</ul>
+<p><strong>Colour PDFs (%)</strong></p>
+${scoreTable("en", "colour")}
+<p><strong>Converted to black and white (%)</strong></p>
+${scoreTable("en", "mono")}
+<p>The 3 samples outside the score — Arduino Uno R3 (Eagle 6, lettering drawn as lines), STM32F4DISCOVERY MB997 (Altium Smart PDF) and STEVAL-IDS001V5 (redrawn for documentation) — are kept out of the repository and only checked on the developer's PC, so they are not in these tables or averages.</p>
+
 
 <h2>Known limitations</h2>
 <ul>

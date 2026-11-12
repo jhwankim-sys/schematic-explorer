@@ -1,7 +1,9 @@
 import type { PageDef } from "./index.ts";
+import { fig } from "./example.ts";
 
 export const readSchematic: PageDef = {
   slug: "learn/read-schematic",
+  updated: "2026-11-12",
   related: ["learn/find-parts", "learn/example", "guide"],
   content: ({ lang, href, tool }) =>
     lang === "ko"
@@ -20,19 +22,20 @@ export const readSchematic: PageDef = {
 <p>Schematic Viewer에서 배선을 누르면 그 노드 전체가 강조되므로, 점 없는 교차가 실제로 연결되지 않았는지 바로 확인할 수 있습니다.</p>
 
 <h2>넷 라벨: 선 없이 연결하기</h2>
-<p>모든 연결을 선으로 그리면 도면이 거미줄이 됩니다. 그래서 선 끝에 <code>SDA</code>, <code>ESP_EN</code> 같은 <strong>넷 라벨</strong>을 붙이고, <strong>같은 이름의 라벨끼리는 선이 없어도 연결된 것</strong>으로 약속합니다. 회로도를 읽을 때 가장 시간이 많이 드는 일이 바로 같은 이름 라벨을 찾아다니는 것이고, Schematic Viewer는 이 작업을 대신해 줍니다.</p>
+<p>모든 연결을 선으로 그리면 도면이 거미줄이 됩니다. 그래서 선 끝에 <code>SDA</code>, <code>ESP_EN</code> 같은 <strong>넷 라벨</strong>을 붙이고, <strong>같은 이름의 라벨끼리는 선이 없어도 연결된 것</strong>으로 약속합니다. 단, <strong>이 약속이 미치는 범위는 라벨 종류에 따라 다릅니다.</strong> KiCad를 예로 들면 로컬 라벨은 같은 시트 안에서만, 글로벌 라벨은 회로 전체에서 연결되고, 계층 라벨은 상위 시트에 있는 시트 핀을 통해서만 이어집니다. 다른 CAD에도 비슷한 구분이 있고, PDF에서는 라벨 모양(글자만 있는지, 깃발·화살표 모양 상자인지)으로 종류를 짐작할 수 있지만 모양 규칙은 프로그램마다 다릅니다.</p>
+<p>회로도를 읽을 때 가장 시간이 많이 드는 일이 같은 이름 라벨을 찾아다니는 것입니다. Schematic Viewer는 같은 이름(대문자·소문자 구분 없음)을 문서 전체에서 목록의 한 항목으로 모아 위치를 차례로 보여 줍니다. PDF에는 라벨 종류가 남아 있지 않아 이름만 보고 모은 결과이므로, 원본에서 시트 안에서만 쓰인 로컬 라벨이 다른 페이지의 같은 이름과 함께 묶일 수 있습니다. 실제로 연결되는지는 원본 CAD 파일이나 넷리스트로 확인하세요.</p>
 <p>라벨 이름은 기능을 나타내도록 짓는 경우가 많습니다. <code>_N</code>, <code>#</code>, <code>/</code>가 붙은 이름은 아래의 액티브 로우 신호인 경우가 많고, <code>TX</code>/<code>RX</code>는 어느 쪽 기준으로 붙인 이름인지(보내는 쪽인지 받는 쪽인지) 도면마다 다르니 핀 이름과 함께 확인해야 합니다.</p>
 
 <h2>전원과 접지 기호</h2>
 <ul>
-<li><strong>전원 기호</strong>: 위쪽을 향한 화살표나 막대 옆에 <code>+3.3V</code>, <code>VCC</code>, <code>+5V</code>처럼 이름이 적힌 기호입니다. 넷 라벨과 마찬가지로 같은 이름이면 모두 연결되어 있습니다.</li>
+<li><strong>전원 기호</strong>: 위쪽을 향한 화살표나 막대 옆에 <code>+3.3V</code>, <code>VCC</code>, <code>+5V</code>처럼 이름이 적힌 기호입니다. KiCad를 비롯한 많은 CAD에서 전원 기호는 회로 전체에 걸친 이름으로 동작해, 같은 이름이면 모든 시트에서 연결됩니다. 프로그램이나 설계에 따라 다를 수 있으니 의심스러우면 넷리스트로 확인하세요.</li>
 <li><strong>접지 기호</strong>: 아래로 갈수록 짧아지는 가로줄 묶음(<code>GND</code>), 삼각형, 갈퀴 모양 등이 있습니다. 아날로그 접지(<code>AGND</code>)와 디지털 접지(<code>DGND</code>), 섀시 접지를 구분해 그리는 도면도 있는데, 이름이 다르면 별개의 노드로 봐야 합니다(보통 한 점에서 비드나 0Ω 저항으로 이어집니다).</li>
 <li><strong>비슷한 이름 주의</strong>: <code>+3.3V</code>와 <code>+3.3VA</code>, <code>VCC</code>와 <code>VCCIO</code>는 다른 전원입니다. 필터나 스위치를 거쳐 갈라진 전원이므로, 측정할 때 어느 쪽인지 반드시 구분해야 합니다.</li>
 </ul>
 
 <h2>페이지를 넘는 연결: 포트와 계층 시트</h2>
-<p>도면이 여러 장이면 <strong>오프 페이지 커넥터</strong>(화살표나 오각형 모양의 상자 안에 이름)를 써서 다른 페이지로 신호를 넘깁니다. 이름이 같으면 연결된 것이며, 옆에 상대 페이지 번호가 작게 적혀 있기도 합니다.</p>
-<p>큰 설계는 <strong>계층 시트</strong>를 씁니다. 상위 페이지에 "전원부", "MCU" 같은 블록 상자가 있고, 상자 테두리의 포트가 하위 페이지의 포트와 이어집니다. 이때는 같은 이름이라도 블록마다 따로일 수 있어 주의가 필요합니다. Schematic Viewer는 이름이 있는 라벨·포트는 페이지를 넘어 묶어 주지만, 이름 없이 블록 포트로만 이어진 연결은 아직 따라가지 못합니다(<a href="${href("help/formats")}">지원 형식</a> 참고).</p>
+<p>도면이 여러 장이면 <strong>오프 페이지 커넥터</strong>(화살표나 오각형 모양의 상자 안에 이름)를 써서 다른 페이지로 신호를 넘깁니다. 같은 이름의 커넥터는 보통 서로 연결되지만 어느 범위의 페이지끼리 이어지는지는 CAD와 설계 구조(계층 여부)에 따라 다르며, 옆에 상대 페이지 번호가 작게 적혀 있기도 합니다.</p>
+<p>큰 설계는 <strong>계층 시트</strong>를 씁니다. 상위 페이지에 "전원부", "MCU" 같은 블록 상자가 있고, 상자 테두리의 포트가 하위 페이지의 포트와 이어집니다. 이때는 같은 이름이라도 블록마다 따로일 수 있어 주의가 필요합니다. Schematic Viewer는 이름이 있는 라벨·포트를 이름만 보고 페이지를 넘어 목록의 한 항목으로 모아 주므로 블록마다 따로인 같은 이름도 함께 묶일 수 있고, 이름 없이 블록 포트로만 이어진 연결은 아직 따라가지 못합니다(<a href="${href("help/formats")}">지원 형식</a> 참고).</p>
 
 <h2>부품 기호와 핀</h2>
 <ul>
@@ -54,6 +57,25 @@ export const readSchematic: PageDef = {
 <li><strong>응용 회로(Typical Application)</strong>: 제조사가 권장하는 연결 예입니다. 회로도의 주변 부품(콘덴서, 저항 값)이 대부분 여기서 왔으므로, 도면과 비교하면 각 부품의 역할을 이해하기 쉽습니다.</li>
 </ol>
 
+<h2>실습: 작은 연습 도면으로 확인하기</h2>
+<p><strong>질문</strong>: 점 없는 교차, 접점, 저항 양쪽의 배선, 같은 이름 라벨을 도구는 어떻게 다루고, 그 결과를 어디까지 믿을 수 있을까?</p>
+<p><strong>자료</strong>: 이 글을 위해 만든 2쪽짜리 연습 도면 <a href="/examples/read-practice.pdf" download>read-practice.pdf</a>(2,730바이트, SHA-256 <code>6daf2711bfc3a4955b84d91850c9f53c406a62e0257984bf8e556aa771fd842f</code>)입니다. 실제 제품이 아니며, CAD 없이 PDF 도형으로만 그렸습니다. 그래서 아래 "의도한 연결"은 도면을 그린 의도이고, CAD가 계산한 넷리스트가 아닙니다.</p>
+<p><strong>조작</strong>: <a href="${tool()}">도구</a>에서 이 파일을 열고, 노드 목록에서 각 이름을 차례로 눌러 강조 범위와 선택 정보를 봅니다.</p>
+<table>
+<thead><tr><th>위치</th><th>의도한 연결</th><th>도구 결과 (2026-11-12)</th></tr></thead>
+<tbody>
+<tr><td>1쪽: <code>SIG_A</code> 가로선과 <code>SIG_B</code> 세로선이 점 없이 교차</td><td>연결하지 않음</td><td>서로 다른 노드. <code>SIG_A</code>를 골라도 세로선은 강조되지 않음</td></tr>
+<tr><td>1쪽: <code>SIG_A</code>에서 R5로 내려가는 T자 분기(접점 있음)</td><td><code>SIG_A</code>에 연결</td><td><code>SIG_A</code>에 포함(배선 2개 · 접점 1개)</td></tr>
+<tr><td>1쪽: R1 양쪽의 <code>IN_L</code>, <code>OUT_R</code></td><td>서로 다른 넷</td><td>서로 다른 노드(부품을 거친 연결은 합치지 않음)</td></tr>
+<tr><td>1쪽 <code>EN</code>과 2쪽 <code>EN</code></td><td>시트마다 따로인 로컬 라벨로 의도</td><td>목록에 <code>EN ×2</code> 한 항목으로 묶임</td></tr>
+<tr><td>두 쪽의 <code>GND</code> 네 곳</td><td>전원 이름으로 모두 연결</td><td>목록에 <code>GND ×4</code> 한 항목</td></tr>
+</tbody>
+</table>
+${fig("read-practice", "ko", "연습 도면 1쪽에서 SIG_A를 선택한 화면. 가로선과 R5로 내려가는 분기가 청록색으로 강조되고, 점 없이 교차하는 SIG_B 세로선은 강조되지 않았다. 왼쪽 목록에 GND ×4, EN ×2, IN_L, OUT_R, SIG_A, SIG_B가 있다.", "SIG_A를 선택한 화면. 접점이 있는 분기는 함께 강조되고, 점 없는 교차의 세로선은 강조되지 않습니다.")}
+<p><strong>원본 대조</strong>: 교차, 접점, 저항 양쪽은 의도와 결과가 같았습니다. <code>EN</code>은 의도와 다르게 묶였습니다. PDF에는 로컬·글로벌 구분이 남지 않아 도구가 이름만 보고 모으기 때문입니다. 실제 설계라면 CAD 원본에서 라벨 종류를 확인해야 합니다(<a href="https://docs.kicad.org/8.0/en/eeschema/eeschema.html">KiCad 회로도 편집기 문서</a>의 라벨 설명 참고).</p>
+<p><strong>한계</strong>: 작은 자체 도면이라 실제 도면의 복잡함을 대표하지 않습니다. 선 끝이 교차점에 닿게 그려진 도면은 결과가 다를 수 있으니, 교차점마다 강조가 건너가는지 직접 확인하세요.</p>
+<p><strong>다음 행동</strong>: 내 도면에서 같은 이름이 여러 페이지에 나오면 라벨 모양과 원본의 라벨 종류를 확인하고, 의심스러운 교차점은 배선을 눌러 강조 범위를 봅니다.</p>
+
 <h2>읽는 순서 제안</h2>
 <p>처음 보는 회로도는 ① 전원 입력에서 레귤레이터를 거쳐 각 전원이 만들어지는 흐름, ② 주 IC(MCU 등)와 그 클럭·리셋, ③ 커넥터에서 들어오고 나가는 신호 순서로 보면 전체 구조가 빨리 잡힙니다. 각 단계에서 전원 이름이나 신호 이름을 Schematic Viewer 목록에서 눌러 보면 어디까지 이어지는지 바로 확인할 수 있습니다. 부품 번호와 값 표기는 <a href="${href("learn/find-parts")}">부품 찾는 법</a>에 정리했습니다.</p>
 `,
@@ -73,19 +95,20 @@ export const readSchematic: PageDef = {
 <p>Clicking a wire in Schematic Viewer highlights the whole net, so you can confirm at once that a dotless crossing really isn't connected.</p>
 
 <h2>Net labels: connecting without wires</h2>
-<p>Drawing every connection as a line would turn the sheet into a spider's web. Instead a wire ends in a <strong>net label</strong> such as <code>SDA</code> or <code>ESP_EN</code>, and <strong>labels with the same name are connected even with no line between them</strong>. Hunting for every label with the same name is the slowest part of reading a schematic — exactly what Schematic Viewer does for you.</p>
+<p>Drawing every connection as a line would turn the sheet into a spider's web. Instead a wire ends in a <strong>net label</strong> such as <code>SDA</code> or <code>ESP_EN</code>, and <strong>labels with the same name are connected even with no line between them</strong>. However, <strong>how far that rule reaches depends on the kind of label.</strong> In KiCad, for example, a local label connects only within its own sheet, a global label connects across the whole schematic, and a hierarchical label connects only through the matching sheet pin on the parent sheet. Other CAD programs make similar distinctions; in a PDF the label's shape (plain text, or a flag- or arrow-shaped box) hints at its kind, but the shapes differ between programs.</p>
+<p>Hunting for every label with the same name is the slowest part of reading a schematic. Schematic Viewer gathers each name (ignoring upper and lower case) into one entry in the list across the whole document and steps through its places. A PDF does not record the kind of label, so this grouping is by name only: a local label that was confined to one sheet in the original can be grouped with the same name on another page. Confirm real connections against the original CAD files or the netlist.</p>
 <p>Names usually describe function. Names with <code>_N</code>, <code>#</code> or <code>/</code> are often active-low (see below), and <code>TX</code>/<code>RX</code> may be named from either side of the link, so check them against the pin names.</p>
 
 <h2>Power and ground symbols</h2>
 <ul>
-<li><strong>Power symbols</strong>: an upward arrow or bar with a name such as <code>+3.3V</code>, <code>VCC</code> or <code>+5V</code>. As with net labels, the same name means the same net everywhere.</li>
+<li><strong>Power symbols</strong>: an upward arrow or bar with a name such as <code>+3.3V</code>, <code>VCC</code> or <code>+5V</code>. In KiCad and many other CAD programs, power symbols act as schematic-wide names, so the same name is connected on every sheet. This can differ by program or design, so check the netlist when in doubt.</li>
 <li><strong>Ground symbols</strong>: stacked lines getting shorter (<code>GND</code>), a triangle, or a rake. Some designs separate analog (<code>AGND</code>), digital (<code>DGND</code>) and chassis ground; different names are different nets, usually joined at one point through a bead or 0 Ω resistor.</li>
 <li><strong>Look-alike names</strong>: <code>+3.3V</code> and <code>+3.3VA</code>, or <code>VCC</code> and <code>VCCIO</code>, are different supplies split off through a filter or switch. Know which one you are probing.</li>
 </ul>
 
 <h2>Connections across pages: ports and hierarchical sheets</h2>
-<p>Multi-page schematics pass signals between pages with <strong>off-page connectors</strong> — a name inside an arrow or pentagon. The same name means connected, and the other page number is sometimes printed beside it.</p>
-<p>Large designs use <strong>hierarchical sheets</strong>: a top page shows blocks such as "Power" or "MCU", and ports on a block's border connect to ports on its sub-page. Here the same name can be local to each block, so take care. Schematic Viewer joins named labels and ports across pages, but does not yet follow connections made only through unnamed block ports (see <a href="${href("help/formats")}">Supported files</a>).</p>
+<p>Multi-page schematics pass signals between pages with <strong>off-page connectors</strong> — a name inside an arrow or pentagon. Connectors with the same name are usually connected, but which pages they reach depends on the CAD program and the design structure (flat or hierarchical); the other page number is sometimes printed beside them.</p>
+<p>Large designs use <strong>hierarchical sheets</strong>: a top page shows blocks such as "Power" or "MCU", and ports on a block's border connect to ports on its sub-page. Here the same name can be local to each block, so take care. Schematic Viewer groups named labels and ports across pages by name only, so names that are separate in each block can be grouped together, and it does not yet follow connections made only through unnamed block ports (see <a href="${href("help/formats")}">Supported files</a>).</p>
 
 <h2>Symbols and pins</h2>
 <ul>
@@ -106,6 +129,25 @@ export const readSchematic: PageDef = {
 <li><strong>Electrical characteristics</strong>: the reference for your measurements; note the test conditions (voltage, temperature).</li>
 <li><strong>Typical application</strong>: the maker's recommended circuit. Most surrounding capacitor and resistor values on a schematic come from here, so comparing the two explains each part's job.</li>
 </ol>
+
+<h2>Practice: checking with a small practice sheet</h2>
+<p><strong>Question</strong>: how does the tool handle a dotless crossing, a junction, the wires on either side of a resistor and labels with the same name — and how far can its result be trusted?</p>
+<p><strong>Material</strong>: a two-page practice sheet made for this article, <a href="/examples/read-practice.pdf" download>read-practice.pdf</a> (2,730 bytes, SHA-256 <code>6daf2711bfc3a4955b84d91850c9f53c406a62e0257984bf8e556aa771fd842f</code>). It is not a real product and was drawn as plain PDF shapes, without CAD, so the "intended connection" below is what the drawing means to show, not a netlist computed by CAD.</p>
+<p><strong>Steps</strong>: open the file in the <a href="${tool()}">tool</a> and click each name in the net list to see the highlight and the selection details.</p>
+<table>
+<thead><tr><th>Where</th><th>Intended connection</th><th>Tool result (2026-11-12)</th></tr></thead>
+<tbody>
+<tr><td>Page 1: the horizontal <code>SIG_A</code> wire crosses the vertical <code>SIG_B</code> wire without a dot</td><td>not connected</td><td>separate nets; selecting <code>SIG_A</code> does not highlight the vertical wire</td></tr>
+<tr><td>Page 1: a T-branch from <code>SIG_A</code> down to R5, with a dot</td><td>part of <code>SIG_A</code></td><td>included in <code>SIG_A</code> (2 wires · 1 junction)</td></tr>
+<tr><td>Page 1: <code>IN_L</code> and <code>OUT_R</code> on either side of R1</td><td>different nets</td><td>different nets (connections through a part are not merged)</td></tr>
+<tr><td><code>EN</code> on page 1 and <code>EN</code> on page 2</td><td>meant as separate, sheet-local labels</td><td>one entry, <code>EN ×2</code>, in the list</td></tr>
+<tr><td>Four <code>GND</code> places on both pages</td><td>all connected by the power name</td><td>one entry, <code>GND ×4</code></td></tr>
+</tbody>
+</table>
+${fig("read-practice", "en", "Page 1 of the practice sheet with SIG_A selected: the horizontal wire and the branch down to R5 are highlighted in cyan, while the SIG_B wire crossing it without a dot is not. The list on the left shows GND ×4, EN ×2, IN_L, OUT_R, SIG_A and SIG_B.", "SIG_A selected. The branch with a dot is highlighted with it; the vertical wire at the dotless crossing is not.")}
+<p><strong>Checking against the intent</strong>: the crossing, the junction and the two sides of the resistor matched the intent. <code>EN</code> was grouped against the intent: a PDF keeps no local/global distinction, so the tool groups by name only. In a real design, check the label kind in the CAD source (see the label section of the <a href="https://docs.kicad.org/8.0/en/eeschema/eeschema.html">KiCad Schematic Editor documentation</a>).</p>
+<p><strong>Limits</strong>: a small self-made sheet does not represent the complexity of real drawings. Where a wire end is drawn touching a crossing the result can differ, so check at each crossing whether the highlight passes over.</p>
+<p><strong>Next step</strong>: when the same name appears on several pages of your drawing, check the label shapes and the label kind in the source; click a wire at any doubtful crossing and watch how far the highlight goes.</p>
 
 <h2>A suggested reading order</h2>
 <p>For an unfamiliar schematic, follow ① the power input through the regulators to each supply, ② the main IC (an MCU, say) with its clock and reset, then ③ the signals entering and leaving through connectors. At each step, click the supply or signal name in Schematic Viewer's list to see how far it reaches. Reference designators and value notation are covered in <a href="${href("learn/find-parts")}">Finding parts</a>.</p>

@@ -261,6 +261,19 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
   }, [active, openFile]);
 
   const page = doc?.pages[pageIdx] ?? null;
+  /** what the analysis found in the whole document / on this page (lines, text): drives the list notices */
+  const docDataKind = useMemo<"empty" | "noText" | null>(() => {
+    if (!doc) return null;
+    if (doc.pages.every((p) => p.segs.length === 0 && p.texts.length === 0)) return "empty";
+    return doc.pages.every((p) => p.texts.length === 0) ? "noText" : null;
+  }, [doc]);
+  // the page on screen, judged on its own (not hidden by a whole-document "noText"): an empty page in a
+  // multi-page PDF gets its own notice; a page without text gets one only when other pages have names
+  const pageDataKind = useMemo<{ kind: "empty" | "noText"; page: number } | null>(() => {
+    if (!doc || !page || docDataKind === "empty" || doc.pages.length < 2) return null;
+    if (page.segs.length === 0 && page.texts.length === 0) return { kind: "empty", page: pageIdx + 1 };
+    return !docDataKind && page.texts.length === 0 ? { kind: "noText", page: pageIdx + 1 } : null;
+  }, [doc, page, pageIdx, docDataKind]);
   const index = useMemo(() => (page ? new PageIndex(page) : null), [page]);
   const netEntries = useMemo(() => (doc ? buildNetEntries(doc.pages) : []), [doc]);
   const compEntries = useMemo(() => (doc ? buildCompEntries(doc.pages) : []), [doc]);
@@ -985,7 +998,9 @@ export function App({ active = true, autoExample = false, headerStart, headerEnd
             nets={netEntries}
             comps={compEntries}
             unnamedCount={unnamedCount}
-            noText={doc.pages.every((p) => p.texts.length === 0)}
+            docData={docDataKind}
+            pageData={pageDataKind}
+            pageWires={!!page && page.segs.length > 0}
             selectedNet={sel?.type === "net" ? sel.name || null : null}
             selectedComp={sel?.type === "component" ? sel.ref : null}
             onPickNet={pickNetEntry}

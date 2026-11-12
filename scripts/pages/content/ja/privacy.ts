@@ -3,11 +3,11 @@ import type { JaPage } from "./index.ts";
 /** the date the policy first took effect (same as the Korean text) */
 const EFFECTIVE = "2026-10-09";
 /** the last revision of the Korean text this translation follows (privacy.ts "updated") */
-const REVISED = "2026-10-16";
+const REVISED = "2026-11-11";
 
 // Translation of ../privacy.ts. Keep every statement true to what the site actually does.
 export const privacy: JaPage = {
-  updated: "2026-10-16",
+  updated: "2026-11-11",
   content: ({ href, email, analytics }) => {
     const reach = email ? `<a href="mailto:${email}">${email}</a>` : "";
     const ga = analytics
@@ -17,11 +17,11 @@ export const privacy: JaPage = {
 <tbody>
 <tr><td><code>file_open</code></td><td>ファイルを開いた方法（選択／ドラッグ＆ドロップ）、ファイルサイズ（KB）</td></tr>
 <tr><td><code>example_load</code></td><td>例題の回路図を開いたこと</td></tr>
-<tr><td><code>view_complete</code></td><td>ページ数、ネット数、部品数、解析時間、テキストレイヤーの有無</td></tr>
+<tr><td><code>view_complete</code></td><td>ページ数、名前のあるネットの数、部品数、解析時間、テキストレイヤーの有無</td></tr>
 <tr><td><code>error</code></td><td>エラーの種類（PDFではない、パスワード、読み込み失敗、線の情報なし、描画失敗）</td></tr>
 </tbody>
 </table>
-<p><strong>ファイル名、ファイルの内容、図面から読み取った文字（部品番号、ネット名など）は、どのような場合も送信しません。</strong>Google Analytics による収集を望まない場合は、ブラウザでクッキーをブロックするか、Google が提供する <a href="https://tools.google.com/dlpage/gaoptout">Google アナリティクス オプトアウト アドオン</a>を利用できます。</p>`
+<p><strong>ファイル名、ファイルの内容、図面から読み取った文字（部品番号、ネット名など）、接続の情報は、どのような場合も送信しません。</strong>上の数値は図面の内容を含みませんが、Google Analytics がクッキーや端末・ブラウザの情報と一緒に処理するため、このサイトはこれを匿名の情報だと断定しません。Google Analytics による収集を望まない場合は、ブラウザでクッキーをブロックするか、Google が提供する <a href="https://tools.google.com/dlpage/gaoptout">Google アナリティクス オプトアウト アドオン</a>を利用できます。</p>`
       : `<p>現在このサイトはアクセス統計ツールを使用していません。今後導入する場合は、収集する項目をまずこのポリシーで公開します。導入しても、ファイル名、ファイルの内容、図面から読み取った文字は送信しません。</p>`;
     return {
       title: "プライバシーポリシー",
@@ -32,7 +32,7 @@ export const privacy: JaPage = {
 <h2>1. 回路図ファイルは収集しません</h2>
 <ul>
 <li>利用者が開く PDF ファイルは、<strong>利用者のブラウザの中だけで</strong>読み込み、解析します。</li>
-<li>ファイル、ファイル名、ファイルの内容、解析結果を運営者のサーバーや第三者に<strong>送信せず、保存もしません</strong>。サイトにはファイルを受け取るサーバープログラムがありません。</li>
+<li>ファイル、ファイル名、ファイルの内容、図面から読み取った文字（部品番号、ネット名など）、詳しい解析結果（どの配線がどこにつながるか、ネット・部品の一覧）を運営者のサーバーや第三者に<strong>送信せず、保存もしません</strong>。サイトにはファイルを受け取るサーバープログラムがありません。</li>${analytics ? `\n<li>ただし、アクセス統計（3）により<strong>文書単位の数値</strong>は Google に送信されます：ファイルサイズ（KB）、ページ数、名前のあるネットの数、部品数、解析時間、テキストレイヤーの有無、エラーの種類。これらの数値には図面の文字や接続の内容は含まれません。</li>` : ""}
 <li>ファイルはブラウザのタブのメモリにだけあり、別のファイルを開いたとき、再読み込みしたとき、タブを閉じたときに消えます。</li>
 <li>例題の回路図を開くときは、例題の PDF をこのサイトからダウンロードします。利用者のファイルがアップロードされるわけではありません。</li>
 </ul>
@@ -76,7 +76,7 @@ ${analytics ? `<p>上記 3 のアクセス統計（Google Analytics）はすで�
 
 <h2>9. ポリシーの変更</h2>
 <p>このポリシーを変更する場合は、このページに変更内容と施行日を掲載します。</p>
-<p>初回施行：${EFFECTIVE} · 最終改定：${REVISED}（2 の言語設定に日本語を追加）· 以前の改定：2026-10-13（4 の広告とクッキーを現在の運営状態に合わせて修正）· 日本語版：2026-10-16</p>
+<p>初回施行：${EFFECTIVE} · 最終改定：${REVISED}（1・3：送信しない情報と、アクセス統計で送信する文書単位の数値を区別して記載）· 以前の改定：2026-10-16（2 の言語設定に日本語を追加）、2026-10-13（4 の広告とクッキーを現在の運営状態に合わせて修正）· 日本語版：2026-11-11</p>
 `,
     };
   },

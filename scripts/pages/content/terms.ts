@@ -4,7 +4,7 @@ const EFFECTIVE = "2026-10-09";
 
 export const terms: PageDef = {
   slug: "terms",
-  updated: "2026-10-21",
+  updated: "2026-11-11",
   cta: false,
   related: ["privacy", "faq", "contact"],
   content: ({ lang, href, analytics }) =>
@@ -21,7 +21,7 @@ export const terms: PageDef = {
 <tr><td>업로드 여부</td><td><strong>업로드하지 않습니다.</strong> 파일은 이용자의 브라우저 안에서 PDF.js로 읽고 분석합니다. 사이트에는 파일을 받는 서버가 없습니다.</td></tr>
 <tr><td>저장 위치</td><td>열려 있는 브라우저 탭의 메모리에만 있습니다. 서버, 브라우저 저장소(localStorage, IndexedDB 등), 쿠키에 파일이나 분석 결과를 저장하지 않습니다.</td></tr>
 <tr><td>삭제 시점</td><td>다른 PDF를 열거나, 페이지를 새로 고치거나, 탭·브라우저를 닫으면 메모리에서 사라집니다. 운영자가 따로 지울 사본은 존재하지 않습니다.</td></tr>
-<tr><td>기록(로그)</td><td>운영자는 파일 이름·내용·분석 결과를 기록하지 않습니다. 호스팅 사업자(GitHub Pages)는 페이지 요청에 대한 접속 기록(IP, 주소, 시간, 브라우저)을 남길 수 있으나 파일은 요청에 포함되지 않습니다.${analytics ? " 방문 통계(Google Analytics)에는 파일 크기, 페이지·노드·부품 수, 분석 시간, 오류 종류 같은 수치만 전송됩니다." : ""} 자세한 내용은 <a href="${href("privacy")}">개인정보처리방침</a>을 참고하세요.</td></tr>
+<tr><td>기록(로그)</td><td>운영자는 파일 이름·내용, 도면에서 읽은 글자, 상세 분석 결과(연결·노드·부품 목록)를 기록하지 않습니다. 호스팅 사업자(GitHub Pages)는 페이지 요청에 대한 접속 기록(IP, 주소, 시간, 브라우저)을 남길 수 있으나 파일은 요청에 포함되지 않습니다.${analytics ? " 방문 통계(Google Analytics)에는 파일 크기, 페이지·노드·부품 수, 분석 시간, 텍스트 레이어 유무, 오류 종류 같은 문서 단위 수치만 전송됩니다." : ""} 자세한 내용은 <a href="${href("privacy")}">개인정보처리방침</a>을 참고하세요.</td></tr>
 <tr><td>내보낸 파일</td><td>CSV 저장 기능은 이용자의 기기에서 파일을 만들어 바로 내려받게 합니다. 서버를 거치지 않습니다.</td></tr>
 <tr><td>예제 파일</td><td>예제 회로도는 Olimex Ltd.가 Apache License 2.0으로 공개한 ESP32-PoE 회로도이며, 원본 그대로 이 사이트에서 제공합니다. 라이선스와 고지문은 사이트의 <code>/examples/</code> 폴더에 함께 있습니다. Olimex는 이 사이트와 관계가 없습니다.</td></tr>
 </tbody>
@@ -77,7 +77,7 @@ export const terms: PageDef = {
 <tr><td>Upload</td><td><strong>None.</strong> Files are read and analyzed in your browser with PDF.js. The site has no server that receives files.</td></tr>
 <tr><td>Where it is kept</td><td>Only in the memory of the open browser tab. Neither the file nor the analysis is saved on a server, in browser storage (localStorage, IndexedDB …) or in cookies.</td></tr>
 <tr><td>When it is deleted</td><td>When you open another PDF, reload the page, or close the tab or browser. There is no copy for the operator to delete.</td></tr>
-<tr><td>Logs</td><td>The operator logs no file names, contents or analysis results. The host (GitHub Pages) may keep access logs of page requests (IP, URL, time, browser), but files are not part of any request.${analytics ? " Visitor statistics (Google Analytics) receive only numbers such as file size, page/net/part counts, analysis time and error type." : ""} See the <a href="${href("privacy")}">privacy policy</a>.</td></tr>
+<tr><td>Logs</td><td>The operator logs no file names or contents, no text read from the drawing and no detailed analysis (connections, net and part lists). The host (GitHub Pages) may keep access logs of page requests (IP, URL, time, browser), but files are not part of any request.${analytics ? " Visitor statistics (Google Analytics) receive only document-level numbers such as file size, page/net/part counts, analysis time, whether a text layer exists and the error type." : ""} See the <a href="${href("privacy")}">privacy policy</a>.</td></tr>
 <tr><td>Exported files</td><td>CSV exports are created on your device and downloaded directly, without passing through a server.</td></tr>
 <tr><td>Example file</td><td>The example is the ESP32-PoE schematic published by Olimex Ltd. under the Apache License 2.0, served unmodified. Its licence and notice are in the site's <code>/examples/</code> folder. Olimex is not affiliated with this site.</td></tr>
 </tbody>
