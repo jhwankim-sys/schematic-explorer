@@ -2,9 +2,9 @@ import type { PageDef } from "./index.ts";
 
 export const faq: PageDef = {
   slug: "faq",
-  updated: "2026-10-16",
+  updated: "2026-11-11",
   related: ["guide", "help/formats", "privacy"],
-  content: ({ lang, href, tool }) =>
+  content: ({ lang, href, tool, analytics }) =>
     lang === "ko"
       ? {
           title: "자주 묻는 질문",
@@ -12,7 +12,7 @@ export const faq: PageDef = {
           body: `
 <h2>파일과 보안</h2>
 <h3>회로도 파일이 서버로 올라가나요?</h3>
-<p>아니요. 선택한 PDF는 브라우저 안에서만 읽고 분석하며, 서버로 전송하거나 저장하지 않습니다. 파일 내용, 파일 이름, 분석 결과도 기록하지 않습니다. 브라우저 개발자 도구의 네트워크 탭을 열어 두고 파일을 열어 보면 파일이 전송되지 않는 것을 직접 확인할 수 있습니다. 자세한 내용은 <a href="${href("privacy")}">개인정보처리방침</a>과 <a href="${href("terms")}">이용약관의 파일 처리 정책</a>에 있습니다.</p>
+<p>아니요. 선택한 PDF는 브라우저 안에서만 읽고 분석하며, 서버로 전송하거나 저장하지 않습니다. 파일 내용, 파일 이름, 도면에서 읽은 글자와 연결 정보도 보내거나 기록하지 않습니다.${analytics ? " 방문 통계에는 파일 크기, 페이지·노드·부품 수 같은 문서 단위 수치만 전송됩니다." : ""} 브라우저 개발자 도구의 네트워크 탭을 열어 두고 파일을 열어 보면 파일이 전송되지 않는 것을 직접 확인할 수 있습니다. 자세한 내용은 <a href="${href("privacy")}">개인정보처리방침</a>과 <a href="${href("terms")}">이용약관의 파일 처리 정책</a>에 있습니다.</p>
 <h3>열었던 파일은 언제 지워지나요?</h3>
 <p>파일은 브라우저 탭의 메모리에만 있습니다. 다른 PDF를 열거나, 페이지를 새로 고치거나, 탭을 닫으면 사라집니다. 브라우저 저장소에 파일을 남기지 않습니다.</p>
 <h3>회사 기밀 회로도를 열어도 되나요?</h3>
@@ -55,7 +55,7 @@ export const faq: PageDef = {
           body: `
 <h2>Files and security</h2>
 <h3>Is my schematic uploaded to a server?</h3>
-<p>No. The PDF you choose is read and analyzed only inside your browser; it is never sent to or stored on a server. Neither the file's contents, its name nor the analysis results are logged. You can confirm this yourself by watching the Network tab of your browser's developer tools while opening a file. Details are in the <a href="${href("privacy")}">privacy policy</a> and the <a href="${href("terms")}">file-handling policy in the terms of use</a>.</p>
+<p>No. The PDF you choose is read and analyzed only inside your browser; it is never sent to or stored on a server. Neither the file's contents, its name nor the text and connections read from it are sent or logged.${analytics ? " Visitor statistics receive only document-level counts such as file size and the number of pages, nets and parts." : ""} You can confirm this yourself by watching the Network tab of your browser's developer tools while opening a file. Details are in the <a href="${href("privacy")}">privacy policy</a> and the <a href="${href("terms")}">file-handling policy in the terms of use</a>.</p>
 <h3>When is an opened file deleted?</h3>
 <p>It lives only in the memory of your browser tab and is gone when you open another PDF, reload the page or close the tab. Nothing is kept in browser storage.</p>
 <h3>Can I open confidential company schematics?</h3>

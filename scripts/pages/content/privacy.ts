@@ -7,10 +7,11 @@ const EFFECTIVE = "2026-10-09";
 // The analytics section switches automatically with site.config.json (ga4MeasurementId).
 export const privacy: PageDef = {
   slug: "privacy",
-  // last revision: section 2, the language setting now lists Japanese (the tool has three languages).
-  // Before that (2026-10-13): section 4 rewritten to match the site (no ads, no consent banner yet).
+  // last revision (2026-11-11): sections 1 and 3 separate what is never sent (file, text, connections) from the
+  // document-level counts the analytics events do send (src/lib/analytics.ts; src/App.tsx track calls).
+  // Before that: 2026-10-16 section 2 lists Japanese; 2026-10-13 section 4 rewritten (no ads, no consent banner yet).
   // The same date is shown at the top as "last updated" and below as "last revised".
-  updated: "2026-10-16",
+  updated: "2026-11-11",
   cta: false,
   related: ["terms", "contact", "faq"],
   content: ({ lang, href, email, analytics, updated }) => {
@@ -23,11 +24,11 @@ export const privacy: PageDef = {
 <tbody>
 <tr><td><code>file_open</code></td><td>파일을 연 방법(선택/끌어 놓기), 파일 크기(KB)</td></tr>
 <tr><td><code>example_load</code></td><td>예제 회로도를 열었다는 사실</td></tr>
-<tr><td><code>view_complete</code></td><td>페이지 수, 노드 수, 부품 수, 분석 시간, 텍스트 레이어 유무</td></tr>
+<tr><td><code>view_complete</code></td><td>페이지 수, 이름 있는 노드 수, 부품 수, 분석 시간, 텍스트 레이어 유무</td></tr>
 <tr><td><code>error</code></td><td>오류 종류(PDF 아님, 암호, 읽기 실패, 선 정보 없음, 그리기 실패)</td></tr>
 </tbody>
 </table>
-<p><strong>파일 이름, 파일 내용, 도면에서 읽은 글자(부품 번호, 넷 이름 등)는 어떤 경우에도 보내지 않습니다.</strong> Google Analytics 수집을 원하지 않으면 브라우저에서 쿠키를 차단하거나 Google이 제공하는 <a href="https://tools.google.com/dlpage/gaoptout">Google 애널리틱스 차단 브라우저 부가기능</a>을 사용할 수 있습니다.</p>`
+<p><strong>파일 이름, 파일 내용, 도면에서 읽은 글자(부품 번호, 넷 이름 등), 연결 정보는 어떤 경우에도 보내지 않습니다.</strong> 위 수치에는 도면의 내용이 들어 있지 않지만, Google Analytics가 쿠키와 기기·브라우저 정보와 함께 처리하므로 이 사이트는 이를 익명 정보라고 단정하지 않습니다. Google Analytics 수집을 원하지 않으면 브라우저에서 쿠키를 차단하거나 Google이 제공하는 <a href="https://tools.google.com/dlpage/gaoptout">Google 애널리틱스 차단 브라우저 부가기능</a>을 사용할 수 있습니다.</p>`
         : `<p>현재 이 사이트는 방문 통계 도구를 사용하지 않습니다. 앞으로 도입하게 되면 수집 항목을 이 방침에 먼저 공개합니다. 도입하더라도 파일 이름, 파일 내용, 도면에서 읽은 글자는 보내지 않습니다.</p>`;
       return {
         title: "개인정보처리방침",
@@ -38,7 +39,8 @@ export const privacy: PageDef = {
 <h2>1. 회로도 파일은 수집하지 않습니다</h2>
 <ul>
 <li>이용자가 여는 PDF 파일은 <strong>이용자의 브라우저 안에서만</strong> 읽고 분석합니다.</li>
-<li>파일, 파일 이름, 파일 내용, 분석 결과를 운영자의 서버나 제3자에게 <strong>전송하지 않으며 저장하지도 않습니다</strong>. 사이트에는 파일을 받는 서버 프로그램이 없습니다.</li>
+<li>파일, 파일 이름, 파일 내용, 도면에서 읽은 글자(부품 번호, 넷 이름 등), 상세 분석 결과(어떤 배선이 어디에 연결되는지, 노드·부품 목록)를 운영자의 서버나 제3자에게 <strong>전송하지 않으며 저장하지도 않습니다</strong>. 사이트에는 파일을 받는 서버 프로그램이 없습니다.</li>${analytics ? `
+<li>다만 방문 통계(3항)로 <strong>문서 단위 수치</strong>는 Google에 전송됩니다: 파일 크기(KB), 페이지 수, 이름 있는 노드 수, 부품 수, 분석 시간, 텍스트 레이어 유무, 오류 종류. 이 수치에는 도면의 글자나 연결 내용이 들어 있지 않습니다.</li>` : ""}
 <li>파일은 브라우저 탭의 메모리에만 있다가 다른 파일을 열거나, 새로 고치거나, 탭을 닫으면 사라집니다.</li>
 <li>예제 회로도를 열 때는 예제 PDF를 이 사이트에서 내려받습니다. 이용자의 파일이 올라가는 것은 아닙니다.</li>
 </ul>
@@ -82,7 +84,7 @@ ${analytics ? `<p>위 3항의 방문 통계(Google Analytics)는 이미 사용�
 
 <h2>9. 방침의 변경</h2>
 <p>이 방침을 바꾸면 이 페이지에 바뀐 내용과 시행일을 게시합니다.</p>
-<p>처음 시행: ${EFFECTIVE} · 최근 개정: ${updated}(2항 언어 설정에 일본어 추가) · 이전 개정: 2026-10-13(4항 광고와 쿠키를 현재 운영 상태에 맞게 고침)</p>
+<p>처음 시행: ${EFFECTIVE} · 최근 개정: ${updated}(1·3항: 보내지 않는 정보와 방문 통계로 보내는 문서 단위 수치를 구분해 적음) · 이전 개정: 2026-10-16(2항 언어 설정에 일본어 추가), 2026-10-13(4항 광고와 쿠키를 현재 운영 상태에 맞게 고침)</p>
 `,
       };
     }
@@ -93,11 +95,11 @@ ${analytics ? `<p>위 3항의 방문 통계(Google Analytics)는 이미 사용�
 <tbody>
 <tr><td><code>file_open</code></td><td>how the file was opened (picker / drag and drop), file size in KB</td></tr>
 <tr><td><code>example_load</code></td><td>that the example schematic was opened</td></tr>
-<tr><td><code>view_complete</code></td><td>number of pages, nets and parts, analysis time, whether a text layer exists</td></tr>
+<tr><td><code>view_complete</code></td><td>number of pages, named nets and parts, analysis time, whether a text layer exists</td></tr>
 <tr><td><code>error</code></td><td>error type (not a PDF, password, read failure, no line data, drawing failure)</td></tr>
 </tbody>
 </table>
-<p><strong>File names, file contents and text read from a drawing (references, net names …) are never sent.</strong> To opt out, block cookies in your browser or install Google's <a href="https://tools.google.com/dlpage/gaoptout">Google Analytics opt-out browser add-on</a>.</p>`
+<p><strong>File names, file contents, text read from a drawing (references, net names …) and connection details are never sent.</strong> The counts above carry nothing from the drawing, but Google Analytics processes them together with cookies and device and browser information, so this site does not claim they are anonymous. To opt out, block cookies in your browser or install Google's <a href="https://tools.google.com/dlpage/gaoptout">Google Analytics opt-out browser add-on</a>.</p>`
       : `<p>The site currently uses no visitor-statistics tool. If one is introduced, what it collects will be published here first, and file names, file contents and text read from drawings will still never be sent.</p>`;
     return {
       title: "Privacy policy",
@@ -108,7 +110,7 @@ ${analytics ? `<p>위 3항의 방문 통계(Google Analytics)는 이미 사용�
 <h2>1. We do not collect your schematic files</h2>
 <ul>
 <li>The PDF you open is read and analyzed <strong>only inside your browser</strong>.</li>
-<li>The file, its name, its contents and the analysis results are <strong>never sent</strong> to the operator's servers or third parties, <strong>nor stored</strong>. The site has no server program that could receive files.</li>
+<li>The file, its name, its contents, text read from the drawing (references, net names …) and the detailed analysis (which wires connect where, the net and part lists) are <strong>never sent</strong> to the operator's servers or third parties, <strong>nor stored</strong>. The site has no server program that could receive files.</li>${analytics ? `\n<li>However, the visitor statistics (section 3) send <strong>document-level counts</strong> to Google: file size (KB), number of pages, named nets and parts, analysis time, whether a text layer exists, and the error type. These counts contain no text or connections from the drawing.</li>` : ""}
 <li>The file stays in your browser tab's memory and is gone when you open another file, reload or close the tab.</li>
 <li>Opening the example schematic downloads the example PDF from this site; nothing of yours is uploaded.</li>
 </ul>
@@ -151,7 +153,7 @@ ${analytics ? `<p>The visitor statistics in section 3 (Google Analytics) are alr
 
 <h2>9. Changes</h2>
 <p>If this policy changes, the changes and their effective date will be posted on this page.</p>
-<p>First effective: ${EFFECTIVE} · Last revised: ${updated} (section 2, language setting: Japanese added) · Previous revision: 2026-10-13 (section 4, advertising and cookies, corrected to how the site runs today)</p>
+<p>First effective: ${EFFECTIVE} · Last revised: ${updated} (sections 1 and 3: what is never sent separated from the document-level counts the visitor statistics send) · Previous revisions: 2026-10-16 (section 2, language setting: Japanese added), 2026-10-13 (section 4, advertising and cookies, corrected to how the site runs today)</p>
 `,
     };
   },
